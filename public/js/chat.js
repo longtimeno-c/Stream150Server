@@ -1,20 +1,97 @@
-class ChatManager {
-    constructor() {
-        this.ws = new WebSocket(CONFIG.WEBSOCKET_URL);
-        this.autoScroll = true;
-        this.setupWebSocket();
-        this.setupEventListeners();
-    }
+let chatHistory = [];
+let autoScroll = true;
 
-    setupWebSocket() {
-        this.ws.onmessage = this.handleWebSocketMessage.bind(this);
-        this.ws.onopen = () => console.log('Connected to chat server');
-        this.ws.onerror = (error) => console.error('WebSocket error:', error);
-        this.ws.onclose = this.handleWebSocketClose.bind(this);
+function addChatMessage(message, platform, username) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${platform}`;
+    
+    const platformIndicator = document.createElement('span');
+    platformIndicator.className = `platform-indicator ${platform}`;
+    platformIndicator.textContent = platform.charAt(0).toUpperCase() + platform.slice(1);
+    
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'chat-username';
+    usernameSpan.textContent = username;
+    usernameSpan.style.color = getColorFromUsername(username);
+    
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'chat-text';
+    messageSpan.textContent = `: ${message}`;
+    
+    messageDiv.appendChild(platformIndicator);
+    messageDiv.appendChild(usernameSpan);
+    messageDiv.appendChild(messageSpan);
+    
+    chatBox.appendChild(messageDiv.cloneNode(true));
+    mobileChatBox.appendChild(messageDiv);
+    
+    while (chatBox.children.length > 200) {
+        chatBox.removeChild(chatBox.firstChild);
+        mobileChatBox.removeChild(mobileChatBox.firstChild);
     }
-
-    // Copy all chat-related functions from the original file
-    // Including: displayChatMessage, addChatMessage, sendChat, etc.
+    
+    if (autoScroll) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+        mobileChatBox.scrollTop = mobileChatBox.scrollHeight;
+    }
 }
 
-const chatManager = new ChatManager(); 
+function getColorFromUsername(username) {
+    // Generate a consistent color based on username
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Use a set of Twitch-like colors
+    const colors = [
+        '#FF4500', '#D2691E', '#FF7F50', '#9ACD32', '#00FA9A',
+        '#00CED1', '#1E90FF', '#7B68EE', '#BA55D3', '#FF69B4'
+    ];
+    
+    return colors[Math.abs(hash) % colors.length];
+}
+
+function handleNewChatMessage(data) {
+    let username = data.username || 'Anonymous';
+    let platform = data.platform || 'web';
+    addChatMessage(data.message, platform, username);
+}
+
+function sendChat() {
+    const message = chatInput.value.trim();
+    if (message) {
+        const chatMessage = {
+            type: 'CHAT_MESSAGE',
+            platform: 'web',
+            message: message,
+            username: 'Viewer'
+        };
+        
+        ws.send(JSON.stringify(chatMessage));
+        chatInput.value = '';
+        
+        // Immediately display the message locally
+        addChatMessage(message, 'web', 'Viewer');
+    }
+}
+
+function sendMobileChat() {
+    const message = mobileChatInput.value.trim();
+    if (message) {
+        const chatMessage = {
+            type: 'CHAT_MESSAGE',
+            platform: 'web',
+            message: message,
+            username: 'Viewer'
+        };
+        
+        ws.send(JSON.stringify(chatMessage));
+        mobileChatInput.value = '';
+        
+        // Immediately display the message locally
+        addChatMessage(message, 'web', 'Viewer');
+    }
+}
+
+// ... rest of the chat-related functions ... 
