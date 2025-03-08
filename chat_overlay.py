@@ -43,51 +43,68 @@ class TwitchChatBot(commands.Bot):
 
 # YouTube Chat Fetcher
 class YouTubeChatFetcher:
-    def __init__(self, ws):
+    def __init__(self, ws, loop):
         self.ws = ws
+        self.loop = loop
         self.running = True
         self.live_chat_id = None
         self.processed_message_ids = set()
+        self.session = None
 
     async def get_live_chat_id(self):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+            
         while self.running and not self.live_chat_id:
             url = f"https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId={YOUTUBE_CHANNEL_ID}&eventType=live&type=video&key={YOUTUBE_API_KEY}"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
+            try:
+                async with self.session.get(url) as resp:
                     data = await resp.json()
-                if "items" in data and data["items"]:
-                    video_id = next((item["id"]["videoId"] for item in data["items"] if item["snippet"]["liveBroadcastContent"] == "live"), None)
-                    if video_id:
-                        chat_url = f"https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id={video_id}&key={YOUTUBE_API_KEY}"
-                        async with session.get(chat_url) as chat_resp:
-                            chat_data = await chat_resp.json()
-                            if "items" in chat_data and chat_data["items"]:
-                                self.live_chat_id = chat_data["items"][0]["liveStreamingDetails"]["activeLiveChatId"]
-                                print(f"Found YouTube Live Chat ID: {self.live_chat_id}")
-            if not self.live_chat_id:
-                print("No live stream found, retrying in 30s...")
+                    if "items" in data and data["items"]:
+                        video_id = next((item["id"]["videoId"] for item in data["items"] if item["snippet"]["liveBroadcastContent"] == "live"), None)
+                        if video_id:
+                            chat_url = f"https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id={video_id}&key={YOUTUBE_API_KEY}"
+                            async with self.session.get(chat_url) as chat_resp:
+                                chat_data = await chat_resp.json()
+                                if "items" in chat_data and chat_data["items"]:
+                                    self.live_chat_id = chat_data["items"][0]["liveStreamingDetails"]["activeLiveChatId"]
+                                    print(f"Found YouTube Live Chat ID: {self.live_chat_id}")
+                if not self.live_chat_id:
+                    print("No live stream found, retrying in 30s...")
+                    await asyncio.sleep(30)
+            except Exception as e:
+                print(f"Error fetching live chat ID: {e}")
                 await asyncio.sleep(30)
 
     async def fetch_chat_messages(self):
-        await self.get_live_chat_id()
-        if not self.live_chat_id:
-            return
+        try:
+            await self.get_live_chat_id()
+            if not self.live_chat_id:
+                return
 
-        url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={self.live_chat_id}&part=snippet,authorDetails&key={YOUTUBE_API_KEY}"
-        while self.running:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    data = await resp.json()
-                    if "items" in data:
-                        for item in data["items"]:
-                            if item["id"] not in self.processed_message_ids:
-                                self.processed_message_ids.add(item["id"])
-                                username = item['authorDetails']['displayName']
-                                message = item['snippet']['displayMessage']
-                                msg = f"{username}: {message}"
-                                self.send_to_websocket(msg, "youtube")
-                                print(f"YouTube | {msg}")
-            await asyncio.sleep(5)
+            url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={self.live_chat_id}&part=snippet,authorDetails&key={YOUTUBE_API_KEY}"
+            while self.running:
+                try:
+                    async with self.session.get(url) as resp:
+                        data = await resp.json()
+                        if "items" in data:
+                            for item in data["items"]:
+                                if item["id"] not in self.processed_message_ids:
+                                    self.processed_message_ids.add(item["id"])
+                                    username = item['authorDetails']['displayName']
+                                    message = item['snippet']['displayMessage']
+                                    msg = f"{username}: {message}"
+                                    self.send_to_websocket(msg, "youtube")
+                                    print(f"YouTube | {msg}")
+                    await asyncio.sleep(5)
+                except Exception as e:
+                    print(f"Error fetching chat messages: {e}")
+                    await asyncio.sleep(5)
+        finally:
+            # Ensure session is closed properly
+            if self.session and not self.session.closed:
+                await self.session.close()
+                print("YouTube session closed")
 
     def send_to_websocket(self, msg, platform):
         if self.ws and self.ws.connected:
@@ -98,6 +115,12 @@ class YouTubeChatFetcher:
                 "message": msg.split(":", 1)[1].strip(),
                 "timestamp": ""
             }))
+
+    async def cleanup(self):
+        self.running = False
+        if self.session and not self.session.closed:
+            await self.session.close()
+            print("YouTube session closed during cleanup")
 
 def run_websocket(twitch_bot, youtube_fetcher):
     def on_message(ws, message):
@@ -119,30 +142,45 @@ if __name__ == "__main__":
     # Initialize WebSocket connection
     ws_app = None  # Will be set when connection opens
     
+    # Create a single event loop for both async tasks
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     # Start Twitch Chat
     twitch_bot = TwitchChatBot(ws_app)
     
     # Start YouTube Chat
-    youtube_fetcher = YouTubeChatFetcher(ws_app)
+    youtube_fetcher = YouTubeChatFetcher(ws_app, loop)
     
     # Start WebSocket in a separate thread
     ws_thread = threading.Thread(target=run_websocket, args=(twitch_bot, youtube_fetcher), daemon=True)
     ws_thread.start()
     
-    # Create a single event loop for both async tasks
-    loop = asyncio.new_event_loop()
-    
     # Run both async tasks in the same event loop
     async def run_both():
-        twitch_task = loop.create_task(twitch_bot.start())
-        youtube_task = loop.create_task(youtube_fetcher.fetch_chat_messages())
-        # Wait for either task to complete (YouTube task should run indefinitely)
-        await asyncio.gather(twitch_task, youtube_task)
+        try:
+            # Create tasks
+            twitch_task = asyncio.create_task(twitch_bot.start())
+            youtube_task = asyncio.create_task(youtube_fetcher.fetch_chat_messages())
+            
+            # Wait for either task to complete or for keyboard interrupt
+            await asyncio.gather(twitch_task, youtube_task)
+        except asyncio.CancelledError:
+            print("Tasks cancelled")
+        finally:
+            # Ensure proper cleanup
+            await youtube_fetcher.cleanup()
     
     try:
         # Run everything in the main thread with a shared event loop
         loop.run_until_complete(run_both())
     except KeyboardInterrupt:
         print("Shutting down...")
+        # Cancel all tasks
+        for task in asyncio.all_tasks(loop):
+            task.cancel()
+        # Run the loop a bit more to execute the cancellations
+        loop.run_until_complete(asyncio.sleep(0.1))
     finally:
         loop.close()
+        print("Event loop closed")
