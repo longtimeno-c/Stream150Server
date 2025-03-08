@@ -4,11 +4,12 @@ let hls = null;
 let currentStream = null;
 
 function getStreamUrls(useLocalhost = false) {
-    const host = useLocalhost ? 'localhost' : 'watch.stream150.com';
-    // Always use HTTP for stream server since it doesn't support HTTPS
+    const host = useLocalhost ? 'localhost' : window.location.hostname;
+    const protocol = window.location.protocol;
+    // Use same protocol as the page
     return {
-        hls: `http://${host}:8000/live/StreamtoME/index.m3u8`,
-        flv: `http://${host}:8000/live/StreamtoME.flv`
+        hls: `${protocol}//${host}/live/StreamtoME/index.m3u8`,
+        flv: `${protocol}//${host}/live/StreamtoME.flv`
     };
 }
 
@@ -23,6 +24,11 @@ function initializeStream(useLocalhost = false) {
         return;
     }
 
+    // Add autoplay attributes
+    video.autoplay = true;
+    video.muted = true; // Initially mute to bypass autoplay restrictions
+    video.playsInline = true; // For iOS support
+    
     // Add loading indicator
     const loadingIndicator = document.createElement('div');
     loadingIndicator.className = 'loading-indicator';
@@ -42,6 +48,10 @@ function initializeStream(useLocalhost = false) {
     video.addEventListener('playing', () => {
         console.log('▶️ Video playing');
         loadingIndicator.style.display = 'none';
+        // Once playing, we can try to unmute if user has interacted with the page
+        if (document.documentElement.hasAttribute('data-user-interacted')) {
+            video.muted = false;
+        }
     });
 
     video.addEventListener('canplay', () => {
@@ -57,15 +67,20 @@ function initializeStream(useLocalhost = false) {
         }
         
         hls = new Hls({
-            debug: false,
-            enableWorker: true,
-            lowLatencyMode: true,
-            backBufferLength: 90,
+            debug: true,
+            // Add quality level control
+            capLevelToPlayerSize: true,
+            startLevel: -1, // Auto-select initial quality
+            abrEwmaDefaultEstimate: 500000, // Default bandwidth estimate
+            abrMaxWithRealBitrate: true,
+            // Add compression settings
+            maxBufferSize: 30 * 1000 * 1000, // 30MB
             maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            maxBufferSize: 60 * 1000 * 1000, // 60MB
-            maxBufferHole: 0.5,
-            highBufferWatchdogPeriod: 2,
+            enableSoftwareAES: true,
+            // Add error recovery settings
+            manifestLoadingTimeOut: 10000,
+            manifestLoadingMaxRetry: 3,
+            manifestLoadingRetryDelay: 1000,
             xhrSetup: function(xhr, url) {
                 xhr.withCredentials = false;
                 // Handle mixed content
@@ -91,27 +106,25 @@ function initializeStream(useLocalhost = false) {
             }
         });
 
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            console.warn('HLS Error:', data);
+        // Add quality level event listeners
+        hls.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
+            console.log(`🔄 Quality Level Changed to ${data.level}`);
+        });
+
+        // Improve error handling
+        hls.on(Hls.Events.ERROR, function (event, data) {
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.log('Fatal network error encountered, trying to recover...');
-                        if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) {
-                            // If HTTPS fails, try HTTP
-                            const httpUrl = urls.hls.replace('https:', 'http:');
-                            console.log('Retrying with HTTP:', httpUrl);
-                            hls.loadSource(httpUrl);
-                        } else {
-                            hls.startLoad();
-                        }
+                        console.log('🔄 Network error, attempting recovery...');
+                        hls.startLoad();
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.log('Fatal media error encountered, trying to recover...');
+                        console.log('🔄 Media error, attempting recovery...');
                         hls.recoverMediaError();
                         break;
                     default:
-                        console.error('Fatal error, cannot recover:', data);
+                        console.error('❌ Fatal error:', data);
                         hls.destroy();
                         break;
                 }
@@ -121,15 +134,31 @@ function initializeStream(useLocalhost = false) {
         hls.loadSource(urls.hls);
         hls.attachMedia(video);
         
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            console.log('✅ HLS manifest parsed, attempting playback');
-            video.play().catch(e => console.log('❌ Autoplay failed:', e));
+        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+            console.log('📡 HLS Manifest parsed, attempting autoplay...');
+            video.play().catch(error => {
+                console.log('❌ Autoplay failed:', error);
+                // Show play button or unmute prompt if needed
+                showAutoplayPrompt(video);
+            });
+            
+            const qualities = data.levels.map((level, index) => ({
+                index: index,
+                bitrate: level.bitrate,
+                width: level.width,
+                height: level.height,
+            }));
+            
+            updateQualitySelector(qualities, hls);
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // For Safari - fallback to native HLS support
         video.src = urls.hls;
         video.addEventListener('loadedmetadata', () => {
-            video.play().catch(e => console.log('❌ Autoplay failed:', e));
+            video.play().catch(error => {
+                console.log('❌ Autoplay failed:', error);
+                showAutoplayPrompt(video);
+            });
         });
     }
 
@@ -194,15 +223,22 @@ function toggleFullscreen() {
     }
 }
 
-function changeQuality() {
-    const quality = document.getElementById('qualitySelect').value;
+function changeQuality(levelIndex) {
     if (hls) {
-        if (quality === 'auto') {
-            hls.currentLevel = -1; // Auto quality
-        } else {
-            hls.currentLevel = parseInt(quality);
-        }
+        hls.currentLevel = parseInt(levelIndex);
     }
+}
+
+function updateQualitySelector(qualities, hls) {
+    const selector = document.querySelector('.quality-selector');
+    selector.innerHTML = `
+        <select onchange="changeQuality(this.value)">
+            <option value="-1">Auto</option>
+            ${qualities.map(q => `
+                <option value="${q.index}">${q.height}p (${Math.round(q.bitrate/1000)} kbps)</option>
+            `).join('')}
+        </select>
+    `;
 }
 
 function toggleChat() {
@@ -258,12 +294,11 @@ function loadChatHistory(messages) {
 
 // Update WebSocket connection handling
 function initializeWebSocket() {
-    // Determine WebSocket protocol based on page protocol
+    // Always use secure WebSocket when page is loaded via HTTPS
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const host = window.location.hostname;
-    // Remove the port for HTTPS connections
-    const port = wsProtocol === 'wss' ? '' : ':3001';
-    const wsUrl = `${wsProtocol}://${host}${port}`;
+    // Let Caddy handle the routing, so no explicit port needed
+    const wsUrl = `${wsProtocol}://${host}/ws`;
     
     let ws = null;
     let reconnectAttempts = 0;
@@ -350,6 +385,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('❌ Video error:', video.error);
         });
     }
+
+    // Add page interaction detection
+    document.addEventListener('click', () => {
+        document.documentElement.setAttribute('data-user-interacted', 'true');
+    });
 });
 
 function handleFullscreenChange() {
@@ -404,4 +444,27 @@ function handleStreamStatusUpdate(status) {
         }
         destroyStream();
     }
+}
+
+// Add new function to handle autoplay restrictions
+function showAutoplayPrompt(video) {
+    const prompt = document.createElement('div');
+    prompt.className = 'autoplay-prompt';
+    prompt.innerHTML = `
+        <div class="autoplay-message">
+            <p>Click to unmute and play</p>
+            <button class="unmute-button">
+                <i class="fas fa-volume-mute"></i> Unmute
+            </button>
+        </div>
+    `;
+    
+    video.parentElement.appendChild(prompt);
+    
+    prompt.querySelector('.unmute-button').addEventListener('click', () => {
+        video.muted = false;
+        video.play().catch(console.error);
+        prompt.remove();
+        document.documentElement.setAttribute('data-user-interacted', 'true');
+    });
 }

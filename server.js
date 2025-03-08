@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
 const EventEmitter = require('events')
+const https = require('https');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
