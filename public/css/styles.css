@@ -36,12 +36,10 @@ body {
     width: 100%;
     position: relative;
     aspect-ratio: 16/9;
-    margin-bottom: 40px;
+    margin-bottom: 20px;
 }
 
 .video-player {
-    width: 100%;
-    height: 100%;
     background: #000;
     border-radius: 8px;
     overflow: hidden;
@@ -177,6 +175,7 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     margin-top: 20px;
+    padding-bottom: 45px;
 }
 
 .donation-tracker h2 {
@@ -198,6 +197,7 @@ body {
     border-radius: 10px;
     overflow: hidden;
     margin-top: 10px;
+    position: relative;
 }
 
 #progress-bar {
@@ -211,19 +211,20 @@ body {
 
 .milestone {
     position: absolute;
-    top: 100%;
-    width: 1px;
-    height: clamp(10px, 3vw, 20px);
+    bottom: -25px;
+    width: 2px;
+    height: 15px;
     background-color: #ffffff;
 }
 
 .milestone-label {
     position: absolute;
-    top: calc(100% + clamp(10px, 3vw, 20px));
+    bottom: -25px;
     transform: translateX(-50%);
     text-align: center;
     font-size: clamp(0.6rem, 2vw, 0.875rem);
     white-space: nowrap;
+    color: #ffffff;
 }
 
 .stream-time {
@@ -455,42 +456,26 @@ body {
     }
 }
 
-/* Fullscreen styles */
-.video-player:fullscreen {
-    border-radius: 0;
-    padding: 0;
-    width: 100vw;
-    height: 100vh;
-}
-
-.video-player:-webkit-full-screen {
-    border-radius: 0;
-    padding: 0;
-    width: 100vw;
-    height: 100vh;
-}
-
 /* Mobile-specific styles */
 @media (max-width: 768px) {
-    .controls {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(45, 45, 45, 0.9);
-        z-index: 1000;
-    }
-
-    .fullscreen-btn {
-        background: rgba(255, 255, 255, 0.9);
-    }
-
-    .fullscreen-btn:hover {
-        background: rgba(255, 255, 255, 1);
-    }
-
     .donation-tracker {
         margin: 10px;
         width: calc(100% - 20px);
     }
+}
+
+#countdown {
+    font-size: 8vw;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    color: #00ff00;
+    font-weight: bold;
+    background-color: #000000;
+    padding: 5vw 0;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 800px;
+    margin: 20px auto;
+    box-shadow: 0px 4px 15px rgba(0, 255, 0, 0.5);
+    overflow: hidden;
 }
