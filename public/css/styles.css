@@ -104,13 +104,11 @@ body {
     left: 0;
     right: 0;
     z-index: 2;
+    pointer-events: none;
 }
 
-.status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
+.status-indicator, .viewer-count {
+    pointer-events: auto;
 }
 
 .status-dot {
@@ -146,7 +144,7 @@ body {
     position: absolute;
     bottom: 10px;
     right: 10px;
-    z-index: 2;
+    z-index: 3;
 }
 
 .fullscreen-btn {
@@ -486,6 +484,21 @@ body {
     .donation-tracker {
         margin: 10px;
         width: calc(100% - 20px);
+    }
+    
+    .status-bar {
+        padding: 8px;
+        font-size: 0.8rem;
+    }
+    
+    .controls {
+        padding: 8px;
+        bottom: 50px;
+    }
+    
+    .fullscreen-btn {
+        width: 36px;
+        height: 36px;
     }
 }
 
