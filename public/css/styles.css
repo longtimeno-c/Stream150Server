@@ -586,3 +586,38 @@ body {
 .unmute-button:hover {
     background: #1976D2;
 }
+
+.live-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.live-btn:hover {
+    background: rgba(255, 0, 0, 0.9);
+    transform: scale(1.05);
+}
+
+.live-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.live-btn.inactive {
+    background: rgba(128, 128, 128, 0.7);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}

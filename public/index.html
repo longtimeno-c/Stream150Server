@@ -34,6 +34,14 @@
                     </div>
                 </div>
                 <div class="controls">
+                    <button class="live-btn" onclick="jumpToLive()" title="Jump to Live">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12" y2="16"></line>
+                        </svg>
+                        <span>LIVE</span>
+                    </button>
                     <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Full Screen">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
@@ -99,6 +107,10 @@
             
             let hls = null;
 
+            // Set video attributes for autoplay
+            video.muted = true; // Mute initially to bypass autoplay restrictions
+            video.autoplay = true;
+            
             if (Hls.isSupported()) {
                 console.log('✅ HLS.js is supported');
                 hls = new Hls({
@@ -165,7 +177,25 @@
 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     console.log('✅ HLS manifest parsed, attempting playback');
-                    video.play().catch(e => console.log('❌ Autoplay failed:', e));
+                    
+                    // Try to play the video
+                    const playPromise = video.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            // Autoplay started successfully
+                            console.log('✅ Autoplay started successfully');
+                            
+                            // Add unmute button for better user experience
+                            if (video.muted) {
+                                showUnmutePrompt();
+                            }
+                        }).catch(error => {
+                            // Autoplay was prevented
+                            console.log('❌ Autoplay prevented:', error);
+                            showPlayButton();
+                        });
+                    }
                 });
 
                 hls.on(Hls.Events.ERROR, (event, data) => {
@@ -231,6 +261,123 @@
                     statusElement.classList.add('offline');
                     statusTextElement.textContent = 'NOT SUPPORTED';
                 }
+            }
+        });
+        
+        // Function to show unmute prompt
+        function showUnmutePrompt() {
+            const videoPlayer = document.querySelector('.video-player');
+            
+            // Create unmute prompt if it doesn't exist
+            if (!document.querySelector('.autoplay-prompt')) {
+                const prompt = document.createElement('div');
+                prompt.className = 'autoplay-prompt';
+                prompt.innerHTML = `
+                    <div class="autoplay-message">Stream playing. Click to unmute.</div>
+                    <button class="unmute-button">Unmute</button>
+                `;
+                videoPlayer.appendChild(prompt);
+                
+                // Add event listener to unmute button
+                document.querySelector('.unmute-button').addEventListener('click', function() {
+                    const video = document.getElementById('videoPlayer');
+                    video.muted = false;
+                    prompt.remove();
+                });
+                
+                // Auto-hide after 10 seconds
+                setTimeout(() => {
+                    if (prompt.parentNode) {
+                        prompt.remove();
+                    }
+                }, 10000);
+            }
+        }
+        
+        // Function to show play button if autoplay is blocked
+        function showPlayButton() {
+            const videoPlayer = document.querySelector('.video-player');
+            
+            // Create play prompt if it doesn't exist
+            if (!document.querySelector('.autoplay-prompt')) {
+                const prompt = document.createElement('div');
+                prompt.className = 'autoplay-prompt';
+                prompt.innerHTML = `
+                    <div class="autoplay-message">Autoplay blocked by browser</div>
+                    <button class="unmute-button">Play Stream</button>
+                `;
+                videoPlayer.appendChild(prompt);
+                
+                // Add event listener to play button
+                document.querySelector('.unmute-button').addEventListener('click', function() {
+                    const video = document.getElementById('videoPlayer');
+                    video.muted = true; // Keep muted to ensure it can play
+                    video.play()
+                        .then(() => {
+                            // Show unmute option after successful play
+                            prompt.innerHTML = `
+                                <div class="autoplay-message">Stream playing. Click to unmute.</div>
+                                <button class="unmute-button">Unmute</button>
+                            `;
+                            
+                            document.querySelector('.unmute-button').addEventListener('click', function() {
+                                video.muted = false;
+                                prompt.remove();
+                            });
+                        })
+                        .catch(e => console.error('Play failed:', e));
+                });
+            }
+        }
+
+        // Function to jump to live stream
+        function jumpToLive() {
+            const video = document.getElementById('videoPlayer');
+            const liveBtn = document.querySelector('.live-btn');
+            
+            // If using HLS.js
+            if (window.hls) {
+                // Jump to live edge
+                window.hls.liveSyncPosition = null;
+                window.hls.currentLevel = -1; // Auto quality
+                
+                // Start playing if paused
+                if (video.paused) {
+                    video.play().catch(e => console.error('Play failed:', e));
+                }
+                
+                // Visual feedback
+                liveBtn.classList.remove('inactive');
+                liveBtn.style.animation = 'pulse 0.5s';
+                setTimeout(() => {
+                    liveBtn.style.animation = '';
+                }, 500);
+            } 
+            // For native HLS support
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // For native players, seeking to end usually jumps to live
+                video.currentTime = video.seekable.end(video.seekable.length - 1);
+                
+                if (video.paused) {
+                    video.play().catch(e => console.error('Play failed:', e));
+                }
+            }
+        }
+        
+        // Add event listener to update live button state
+        document.getElementById('videoPlayer').addEventListener('timeupdate', function() {
+            const video = this;
+            const liveBtn = document.querySelector('.live-btn');
+            
+            if (!liveBtn) return;
+            
+            // Check if we're at the live edge (within 10 seconds)
+            const atLiveEdge = video.duration - video.currentTime < 10;
+            
+            if (atLiveEdge && !video.paused) {
+                liveBtn.classList.remove('inactive');
+            } else {
+                liveBtn.classList.add('inactive');
             }
         });
     </script>
