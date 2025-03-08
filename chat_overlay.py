@@ -8,10 +8,13 @@ import aiohttp
 from twitchio.ext import commands
 
 # Configuration
-TWITCH_CHANNEL = "twitchusername"
-TWITCH_TOKEN = "oauth:twitchaccess"
-YOUTUBE_API_KEY = "cloud-key"
-YOUTUBE_CHANNEL_ID = "channel-key"
+# Twitch Configuration
+TWITCH_CHANNEL = "westboys1912"  # Change this to your Twitch channel name
+TWITCH_TOKEN = "oauth:xl0yg6ryxly7dpxoexyeuue0oxmivp"  # Generate at https://twitchtokengenerator.com/
+# YouTube Configuration
+YOUTUBE_API_KEY = "AIzaSyDoVhH2WRSvaC_KUSNNUxFywkVuAJ7Iss4"  # Get from Google Developer Console
+YOUTUBE_CHANNEL_ID = "UC5MvICzk7cb1Oh2c9VBrnIw"  # Find from YouTube channel URL
+YOUTUBE_LIVE_CHAT_ID = None  # Will be fetched dynamically
 WEBSOCKET_URL = "ws://localhost:3001"  # Match your Node.js server
 
 def create_chat_overlay():
