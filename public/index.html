@@ -101,17 +101,30 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const video = document.getElementById('videoPlayer');
-            // Update this URL to your public server address
-            const hlsUrl = `https://watch.stream150.com:8000/live/StreamtoME/index.m3u8`;
+            // Use HTTP for local development, HTTPS for production
+            const isProduction = window.location.hostname === 'watch.stream150.com';
+            const protocol = isProduction ? 'https' : 'http';
+            const wsProtocol = isProduction ? 'wss' : 'ws';
+            
+            // Configure stream URL
+            const hlsUrl = `${protocol}://watch.stream150.com:8000/live/StreamtoME/index.m3u8`;
+            
+            // Make this variable global so other scripts can access it
+            window.WS_URL = `${wsProtocol}://watch.stream150.com:3001`;
+            
             let hls = null;
 
             if (Hls.isSupported()) {
                 console.log('✅ HLS.js is supported');
                 hls = new Hls({
-                    debug: false,
+                    debug: true, // Temporarily enable debug for troubleshooting
                     enableWorker: true,
                     lowLatencyMode: true,
                     backBufferLength: 90,
+                    xhrSetup: function(xhr, url) {
+                        // Handle potential CORS issues
+                        xhr.withCredentials = false;
+                    },
                     // Add retry configuration
                     manifestLoadingMaxRetry: 6,
                     manifestLoadingRetryDelay: 1000,
