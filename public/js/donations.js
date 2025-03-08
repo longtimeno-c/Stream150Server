@@ -27,20 +27,23 @@ function createMilestoneMarkers() {
 
 async function fetchDonationAmount() {
     try {
-        const response = await fetch(paypalPoolUrl);
+        const response = await fetch(paypalPoolUrl + '?t=' + new Date().getTime());
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         const text = await response.text();
         const donationMatch = text.match(/"currencyAmount":"([0-9.]+)"/);
         if (donationMatch && donationMatch[1]) {
-            return parseFloat(donationMatch[1]);
+            const amount = parseFloat(donationMatch[1]);
+            console.log('Parsed donation amount:', amount);
+            if (amount >= 0 && amount <= totalGoal * 2) { // Reasonable upper limit
+                return amount;
+            }
         }
-        // If we can't parse the value, return the last known good value or manual amount
+        console.warn('Invalid donation amount, using manual fallback');
         return manualDonationAmount;
     } catch (error) {
         console.error('Error fetching donation data:', error);
-        // Return the manual amount instead of 0 when there's an error
         return manualDonationAmount;
     }
 }
@@ -91,5 +94,3 @@ async function updateDonationUI() {
         }
     }
 }
-
-// ... rest of the donation-related functions ... 
