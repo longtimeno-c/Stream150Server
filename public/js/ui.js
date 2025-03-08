@@ -2,6 +2,7 @@ console.log('🔍 UI.js loaded and executing');
 
 let hls = null;
 let currentStream = null;
+let currentUsername = window.currentUsername || 'Anonymous';
 
 // Function to detect mobile devices
 function isMobileDevice() {
@@ -272,15 +273,74 @@ function updateQualitySelector(qualities, hls) {
     `;
 }
 
+// Listen for username changes
+document.addEventListener('username-loaded', function(e) {
+    currentUsername = e.detail.username;
+    // Update any UI elements that display the username
+    updateUsernameDisplays();
+});
+
+document.addEventListener('username-changed', function(e) {
+    currentUsername = e.detail.username;
+    // Update any UI elements that display the username
+    updateUsernameDisplays();
+});
+
+// Update all username displays in the UI
+function updateUsernameDisplays() {
+    // Update main chat header
+    const mainUsernameElement = document.querySelector('.chat-header .current-username');
+    if (mainUsernameElement) {
+        mainUsernameElement.textContent = currentUsername;
+    }
+    
+    // Update mobile chat header
+    const mobileUsernameElement = document.querySelector('.mobile-chat-header .current-username');
+    if (mobileUsernameElement) {
+        mobileUsernameElement.textContent = currentUsername;
+    }
+}
+
+// Add username display to mobile chat header
+function updateMobileChatHeader() {
+    const mobileChatHeader = document.querySelector('.mobile-chat-header');
+    if (mobileChatHeader && !mobileChatHeader.querySelector('.mobile-username-display')) {
+        const usernameDisplay = document.createElement('div');
+        usernameDisplay.className = 'mobile-username-display';
+        usernameDisplay.innerHTML = `
+            <span>You: <span class="current-username">${currentUsername}</span></span>
+            <button class="username-change-btn" onclick="changeUsername()">Change</button>
+        `;
+        
+        // Insert before the close button
+        const closeButton = mobileChatHeader.querySelector('.close-chat-btn');
+        mobileChatHeader.insertBefore(usernameDisplay, closeButton);
+    }
+}
+
+// Update the toggleChat function to include username display
 function toggleChat() {
-    if (window.innerWidth <= 767) {
-        if (mobileChatOverlay.style.display === 'flex') {
-            mobileChatOverlay.style.display = 'none';
-        } else {
-            mobileChatOverlay.style.display = 'flex';
+    const chatToggle = document.querySelector('.chat-toggle');
+    const mobileChatOverlay = document.getElementById('mobileChatOverlay');
+    
+    if (mobileChatOverlay.style.display === 'none' || !mobileChatOverlay.style.display) {
+        mobileChatOverlay.style.display = 'flex';
+        chatToggle.classList.add('active');
+        
+        // Update mobile chat header with username
+        updateMobileChatHeader();
+        
+        // Copy messages from main chat to mobile chat
+        const chatBox = document.getElementById('chatBox');
+        const mobileChatBox = document.getElementById('mobileChatBox');
+        
+        if (chatBox && mobileChatBox) {
+            mobileChatBox.innerHTML = chatBox.innerHTML;
             mobileChatBox.scrollTop = mobileChatBox.scrollHeight;
-            mobileChatInput.focus();
         }
+    } else {
+        mobileChatOverlay.style.display = 'none';
+        chatToggle.classList.remove('active');
     }
 }
 

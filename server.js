@@ -220,9 +220,33 @@ wss.on('connection', (ws) => {
         viewers: viewerCount 
     }));
     
-    // Send the last 50 chat messages instead of the entire history
-    // Make sure to include the most recent messages
-    const recentMessages = chatHistory.slice(-50);
+    // Ensure all chat messages have the proper format before sending
+    const recentMessages = chatHistory.slice(-50).map(msg => {
+        // If it's a string, convert it to a proper message object
+        if (typeof msg === 'string') {
+            return {
+                type: 'CHAT_MESSAGE',
+                platform: 'web',
+                username: 'Anonymous',
+                message: msg,
+                timestamp: new Date().toISOString(),
+                id: Date.now().toString()
+            };
+        }
+        // If it's already an object but missing fields, add defaults
+        if (typeof msg === 'object') {
+            return {
+                type: msg.type || 'CHAT_MESSAGE',
+                platform: msg.platform || 'web',
+                username: msg.username || 'Anonymous',
+                message: msg.message || '',
+                timestamp: msg.timestamp || new Date().toISOString(),
+                id: msg.id || Date.now().toString()
+            };
+        }
+        return msg;
+    });
+    
     console.log(`Sending ${recentMessages.length} recent chat messages to new client`);
     
     ws.send(JSON.stringify({
@@ -270,7 +294,34 @@ wss.on('connection', (ws) => {
                 broadcast(chatMessage);
             } else if (data.type === 'REQUEST_CHAT_HISTORY') {
                 console.log('Client requested chat history');
-                const recentMessages = chatHistory.slice(-50);
+                
+                // Ensure all chat messages have the proper format before sending
+                const recentMessages = chatHistory.slice(-50).map(msg => {
+                    // If it's a string, convert it to a proper message object
+                    if (typeof msg === 'string') {
+                        return {
+                            type: 'CHAT_MESSAGE',
+                            platform: 'web',
+                            username: 'Anonymous',
+                            message: msg,
+                            timestamp: new Date().toISOString(),
+                            id: Date.now().toString()
+                        };
+                    }
+                    // If it's already an object but missing fields, add defaults
+                    if (typeof msg === 'object') {
+                        return {
+                            type: msg.type || 'CHAT_MESSAGE',
+                            platform: msg.platform || 'web',
+                            username: msg.username || 'Anonymous',
+                            message: msg.message || '',
+                            timestamp: msg.timestamp || new Date().toISOString(),
+                            id: msg.id || Date.now().toString()
+                        };
+                    }
+                    return msg;
+                });
+                
                 ws.send(JSON.stringify({
                     type: 'CHAT_HISTORY',
                     messages: recentMessages
