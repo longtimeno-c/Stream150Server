@@ -289,6 +289,19 @@
             margin-bottom: 15px;
             color: #fff;
         }
+
+        /* Platform-specific chat message styling */
+        .chat-box .twitch {
+            background: rgba(145, 70, 255, 0.2);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        .chat-box .youtube {
+            background: rgba(255, 0, 0, 0.2);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -387,6 +400,7 @@
             } else if (data.type === 'CHAT_MESSAGE') {
                 const messageDiv = document.createElement('div');
                 messageDiv.textContent = data.message;
+                messageDiv.className = data.platform; // 'twitch' or 'youtube'
                 chatBox.appendChild(messageDiv);
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
