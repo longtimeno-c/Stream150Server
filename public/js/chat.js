@@ -52,10 +52,35 @@ function getColorFromUsername(username) {
     return colors[Math.abs(hash) % colors.length];
 }
 
+function initializeChatHistory(messages) {
+    chatHistory = messages;
+    
+    // Clear existing messages
+    chatBox.innerHTML = '';
+    mobileChatBox.innerHTML = '';
+    
+    // Display last 50 messages
+    const recentMessages = messages.slice(-50);
+    recentMessages.forEach(msg => {
+        addChatMessage(msg.message, msg.platform, msg.username);
+    });
+}
+
 function handleNewChatMessage(data) {
-    let username = data.username || 'Anonymous';
-    let platform = data.platform || 'web';
-    addChatMessage(data.message, platform, username);
+    // Update to handle both individual messages and chat history
+    if (data.type === 'CHAT_HISTORY') {
+        initializeChatHistory(data.messages);
+    } else {
+        let username = data.username || 'Anonymous';
+        let platform = data.platform || 'web';
+        addChatMessage(data.message, platform, username);
+        
+        // Update local chat history
+        chatHistory.push(data);
+        if (chatHistory.length > 200) {
+            chatHistory = chatHistory.slice(-200);
+        }
+    }
 }
 
 function sendChat() {
@@ -65,14 +90,13 @@ function sendChat() {
             type: 'CHAT_MESSAGE',
             platform: 'web',
             message: message,
-            username: 'Viewer'
+            username: 'Viewer',
+            timestamp: new Date().toISOString(),
+            id: Date.now().toString()
         };
         
         ws.send(JSON.stringify(chatMessage));
         chatInput.value = '';
-        
-        // Immediately display the message locally
-        addChatMessage(message, 'web', 'Viewer');
     }
 }
 
@@ -83,14 +107,13 @@ function sendMobileChat() {
             type: 'CHAT_MESSAGE',
             platform: 'web',
             message: message,
-            username: 'Viewer'
+            username: 'Viewer',
+            timestamp: new Date().toISOString(),
+            id: Date.now().toString()
         };
         
         ws.send(JSON.stringify(chatMessage));
         mobileChatInput.value = '';
-        
-        // Immediately display the message locally
-        addChatMessage(message, 'web', 'Viewer');
     }
 }
 
