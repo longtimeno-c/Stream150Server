@@ -67,14 +67,11 @@ wss.on('connection', (ws) => {
         viewers: viewerCount 
     }));
 
-    // Send chat history in chunks to prevent overwhelming the client
-    const chunkSize = 50;
-    for (let i = 0; i < chatHistory.length; i += chunkSize) {
-        const chunk = chatHistory.slice(i, i + chunkSize);
-        chunk.forEach(msg => {
-            ws.send(JSON.stringify(msg));
-        });
-    }
+    // Send chat history as a single batch
+    ws.send(JSON.stringify({
+        type: 'CHAT_HISTORY',
+        messages: chatHistory
+    }));
 
     ws.on('message', (message) => {
         try {
