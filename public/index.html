@@ -16,12 +16,12 @@
     <div class="main-container">
         <div class="video-container">
             <div class="video-player">
-                <video id="videoPlayer" class="video-element" playsinline>
+                <video id="videoPlayer" class="video-element" playsinline controls>
                     Your browser does not support the video element.
                 </video>
                 <video id="videoPlaceholder" class="video-placeholder" playsinline loop muted autoplay>
                     <source src="logo.mp4" type="video/mp4">
-                     Waiting...
+                    Waiting...
                 </video>
                 <div class="status-bar">
                     <div id="status" class="status-indicator offline">
@@ -38,9 +38,8 @@
                             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m-6 18v-3m0-12V3m-9 18h3M3 8v8a2 2 0 0 0 2 2h3m10-2h3a2 2 0 0 0 2-2v-3"/>
                         </svg>
                     </button>
-                    <select id="qualitySelect" onchange="changeQuality()">
-                        <option value="720p">720p</option>
-                        <option value="1080p">1080p</option>
+                    <select id="qualitySelect" class="quality-select">
+                        <option value="auto">Auto</option>
                     </select>
                 </div>
                 <div class="donation-buttons">
