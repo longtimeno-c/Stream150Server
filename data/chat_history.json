@@ -1,0 +1,26 @@
+[
+  {
+    "type": "CHAT_MESSAGE",
+    "platform": "web",
+    "username": "Web User",
+    "message": "Hello",
+    "timestamp": "2025-03-08T19:56:22.989Z",
+    "id": "1741463782989"
+  },
+  {
+    "type": "CHAT_MESSAGE",
+    "platform": "web",
+    "username": "Web User",
+    "message": "Why hello there",
+    "timestamp": "2025-03-08T19:56:35.859Z",
+    "id": "1741463795859"
+  },
+  {
+    "type": "CHAT_MESSAGE",
+    "platform": "web",
+    "username": "Web User",
+    "message": "Boo",
+    "timestamp": "2025-03-08T19:58:03.172Z",
+    "id": "1741463883172"
+  }
+]

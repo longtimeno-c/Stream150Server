@@ -4,15 +4,16 @@ const WebSocket = require('ws');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-const { setupWebSocket } = require('./public/js/websocket');
+const NodeMediaServer = require('node-media-server');
+const EventEmitter = require('events')
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
-const MAX_CHAT_HISTORY = 1000; // Increased for better continuity
+const MAX_CHAT_HISTORY = 100;
 
 const app = express();
 const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 let isStreaming = false;
 let viewerCount = 0;
@@ -68,15 +69,242 @@ function saveChatHistory() {
 // Initialize
 loadChatHistory();
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript');
+        }
+    }
+}));
+
+// Proxy HLS requests to the media server
+app.get('/live/:stream/:file', (req, res) => {
+    const stream = req.params.stream;
+    const file = req.params.file;
+    const hlsUrl = `http://localhost:8000/live/${stream}/${file}`;
+    
+    console.log(`📡 Proxying HLS request to: ${hlsUrl}`);
+    
+    // Set appropriate headers for HLS content
+    if (file.endsWith('.m3u8')) {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    } else if (file.endsWith('.ts')) {
+        res.setHeader('Content-Type', 'video/mp2t');
+    }
+    
+    // Improved proxy implementation with error handling
+    const proxyReq = http.get(hlsUrl, (proxyRes) => {
+        // Copy all headers from the proxied response
+        Object.keys(proxyRes.headers).forEach(key => {
+            res.setHeader(key, proxyRes.headers[key]);
+        });
+        
+        // Set status code
+        res.status(proxyRes.statusCode);
+        
+        // Pipe the response data
+        proxyRes.pipe(res);
+        
+        // Log success
+        console.log(`✅ Successfully proxied HLS request: ${file} (${proxyRes.statusCode})`);
+    });
+    
+    proxyReq.on('error', (err) => {
+        console.error(`❌ Error proxying HLS request for ${file}:`, err);
+        if (!res.headersSent) {
+            res.status(502).send(`Error proxying HLS request: ${err.message}`);
+        }
+    });
+    
+    // Handle client disconnect
+    req.on('close', () => {
+        proxyReq.destroy();
+    });
+});
+
+// Add a catch-all route for HLS segments that might have different patterns
+app.get('/live/:stream/*', (req, res) => {
+    const stream = req.params.stream;
+    const pathParts = req.path.split('/');
+    const file = pathParts[pathParts.length - 1];
+    const hlsUrl = `http://localhost:8000${req.path}`;
+    
+    console.log(`📡 Proxying additional HLS request to: ${hlsUrl}`);
+    
+    // Set appropriate headers based on file extension
+    if (file.endsWith('.m3u8')) {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    } else if (file.endsWith('.ts')) {
+        res.setHeader('Content-Type', 'video/mp2t');
+    }
+    
+    // Proxy the request
+    const proxyReq = http.get(hlsUrl, (proxyRes) => {
+        Object.keys(proxyRes.headers).forEach(key => {
+            res.setHeader(key, proxyRes.headers[key]);
+        });
+        res.status(proxyRes.statusCode);
+        proxyRes.pipe(res);
+    });
+    
+    proxyReq.on('error', (err) => {
+        console.error(`❌ Error proxying additional HLS request:`, err);
+        if (!res.headersSent) {
+            res.status(502).send(`Error proxying request: ${err.message}`);
+        }
+    });
+    
+    req.on('close', () => {
+        proxyReq.destroy();
+    });
+});
+
+// Add this route to check if the HLS stream exists
+app.get('/check-stream', (req, res) => {
+    const hlsUrl = `http://localhost:8000/live/StreamtoME/index.m3u8`;
+    
+    console.log(`🔍 Checking if HLS stream exists at: ${hlsUrl}`);
+    
+    const checkReq = http.get(hlsUrl, (checkRes) => {
+        console.log(`✅ HLS stream check result: ${checkRes.statusCode}`);
+        
+        res.json({
+            exists: checkRes.statusCode === 200,
+            statusCode: checkRes.statusCode,
+            isStreaming: isStreaming
+        });
+    });
+    
+    checkReq.on('error', (err) => {
+        console.error(`❌ Error checking HLS stream:`, err);
+        res.status(500).json({
+            exists: false,
+            error: err.message,
+            isStreaming: isStreaming
+        });
+    });
+});
+
+// Then your existing routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Set up WebSocket
-const wss = setupWebSocket(server);
+// This should be the LAST route
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.use((req, res) => {
+    console.log('404 - Not Found:', req.url);
+    res.status(404).send('Not Found');
+});
+
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+    console.log('New WebSocket client connected');
+    viewerCount++;
+    
+    // Send initial stream status and viewer count
+    ws.send(JSON.stringify({ 
+        type: 'STREAM_STATUS', 
+        status: isStreaming ? 'LIVE' : 'OFFLINE',
+        viewers: viewerCount 
+    }));
+    
+    // Send the last 50 chat messages instead of the entire history
+    // Make sure to include the most recent messages
+    const recentMessages = chatHistory.slice(-50);
+    console.log(`Sending ${recentMessages.length} recent chat messages to new client`);
+    
+    ws.send(JSON.stringify({
+        type: 'CHAT_HISTORY',
+        messages: recentMessages
+    }));
+    
+    // Broadcast updated viewer count
+    broadcast({
+        type: 'VIEWER_COUNT',
+        viewers: viewerCount
+    });
+    
+    // Handle incoming messages
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            
+            if (data.type === 'CHAT_MESSAGE') {
+                // Format the chat message
+                const chatMessage = {
+                    type: 'CHAT_MESSAGE',
+                    platform: data.platform || 'web',
+                    username: data.username || 'Anonymous',
+                    message: data.message,
+                    timestamp: new Date().toISOString(),
+                    id: Date.now().toString()
+                };
+                
+                // Add to chat history
+                chatHistory.push(chatMessage);
+                console.log(`Added message to chat history. Total: ${chatHistory.length}`);
+                
+                // Maintain maximum history size
+                if (chatHistory.length > MAX_CHAT_HISTORY) {
+                    chatHistory.shift();
+                }
+                
+                // Save chat history periodically (every 10 messages)
+                if (chatHistory.length % 10 === 0) {
+                    saveChatHistory();
+                }
+                
+                // Broadcast to all clients
+                broadcast(chatMessage);
+            } else if (data.type === 'REQUEST_CHAT_HISTORY') {
+                console.log('Client requested chat history');
+                const recentMessages = chatHistory.slice(-50);
+                ws.send(JSON.stringify({
+                    type: 'CHAT_HISTORY',
+                    messages: recentMessages
+                }));
+            }
+        } catch (err) {
+            console.error('Error processing message:', err);
+        }
+    });
+    
+    // Handle disconnection
+    ws.on('close', () => {
+        console.log('WebSocket client disconnected');
+        viewerCount = Math.max(0, viewerCount - 1);
+        
+        // Broadcast updated viewer count
+        broadcast({
+            type: 'VIEWER_COUNT',
+            viewers: viewerCount
+        });
+    });
+});
+
+// Function to broadcast messages to all connected clients
+function broadcast(message) {
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(message));
+        }
+    });
+}
+
+// Save chat history more frequently (every minute)
+setInterval(saveChatHistory, 60 * 1000);
 
 app.post('/authenticate', (req, res) => {
     const { name } = req.body;
@@ -115,30 +343,129 @@ process.on('uncaughtException', (err) => {
     saveChatHistory();
 });
 
-// Add broadcast function that was referenced but missing
-function broadcast(message) {
-    if (!wss) return;
-    
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(message));
-        }
-    });
+// Update the config to remove HTTPS
+const config = {
+    rtmp: {
+        port: 1935,
+        chunk_size: 60000,
+        gop_cache: true,
+        ping: 30,
+        ping_timeout: 60
+    },
+    http: {
+        port: 8000,
+        allow_origin: '*',
+        mediaroot: './media'
+    },
+    trans: {
+        ffmpeg: '/usr/bin/ffmpeg',  // Explicit path to ffmpeg on Ubuntu
+        tasks: [
+            {
+                app: 'live',
+                hls: true,
+                hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
+                hlsKeep: false,
+                dash: false,
+            }
+        ]
+    }
+};
+
+// Create RTMP server instance
+const nms = new NodeMediaServer(config);
+
+// Extend nms with EventEmitter if needed (fallback)
+if (typeof nms.on !== 'function') {
+    Object.setPrototypeOf(nms, EventEmitter.prototype);
+    EventEmitter.call(nms);
 }
 
-// Add error handling for the server
-server.on('error', (error) => {
-    console.error('Server error:', error);
+//console.log('NMS instance before run:', nms);
+nms.run()
+console.log('NMS started (HTTP and RTMP servers running)');
+
+// Add more detailed logging for RTMP events
+nms.on('preConnect', (id, args) => {
+    console.log('🔄 [RTMP] Client attempting to connect:', id);
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-}).on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use`);
-    } else {
-        console.error('Error starting server:', error);
+nms.on('postConnect', (id, args) => {
+    console.log('✅ [RTMP] Client connected:', id);
+});
+
+nms.on('prePublish', (id, StreamPath, args) => {
+    console.log('🎥 [RTMP] Stream starting:', {
+        id: id,
+        path: StreamPath,
+        args: args
+    });
+    let stream_key = StreamPath.split('/')[2];
+
+    if (stream_key === STREAM_KEY) {
+        console.log('✅ [RTMP] Stream key validated');
+        console.log('📡 [HLS] HLS stream should be available at:', `http://localhost:8000/live/${stream_key}/index.m3u8`);
+        isStreaming = true;
+        broadcast({ 
+            type: 'STREAM_STATUS', 
+            status: 'LIVE',
+            viewers: viewerCount 
+        });
+        return;
     }
-    process.exit(1);
+
+    throw new Error('Invalid stream key');
+});
+
+nms.on('donePublish', (id, StreamPath, args) => {
+    console.log('🛑 [RTMP] Stream ended:', {
+        id: id,
+        path: StreamPath
+    });
+    isStreaming = false;
+    broadcast({ 
+        type: 'STREAM_STATUS', 
+        status: 'OFFLINE',
+        viewers: viewerCount 
+    });
+});
+
+// Add logging for stream chunks being generated
+nms.on('postHLSSegment', (id, level, sn, duration, start, end) => {
+    console.log('📼 [HLS] New segment generated:', {
+        id,
+        level,
+        segmentNumber: sn,
+        duration,
+        start,
+        end,
+        path: `live/StreamtoME/${sn}.ts`
+    });
+});
+
+// Add this after nms.run()
+console.log('📂 Media root directory:', path.resolve(config.http.mediaroot));
+console.log('📂 Expected HLS path:', path.resolve(config.http.mediaroot, 'live', STREAM_KEY));
+
+// Check if the directory exists
+const hlsDir = path.resolve(config.http.mediaroot, 'live', STREAM_KEY);
+fs.access(hlsDir, fs.constants.F_OK, (err) => {
+    if (err) {
+        console.log('⚠️ HLS directory does not exist yet:', hlsDir);
+        // Create the directory structure
+        fs.mkdirSync(hlsDir, { recursive: true });
+        console.log('✅ Created HLS directory:', hlsDir);
+    } else {
+        console.log('✅ HLS directory exists:', hlsDir);
+    }
+});
+
+server.listen(3001, () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const host = isProduction ? 'watch.stream150.com' : 'localhost';
+    const protocol = isProduction ? 'https' : 'http';
+    
+    console.log('Backend server running on:');
+    console.log(`- Web: ${protocol}://${host}:3001`);
+    console.log(`- RTMP: rtmp://${host}:1935/live`);
+    console.log(`- HLS: ${protocol}://${host}:${isProduction ? '8443' : '8000'}/live`);
 });
