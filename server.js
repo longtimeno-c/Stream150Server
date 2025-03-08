@@ -81,19 +81,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
 }));
 
-app.get('/', (req, res) => {
-    try {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'), err => {
-            if (err) {
-                console.error('Error sending index.html:', err);
-                res.status(500).send('Error loading page');
-            }
-        });
-    } catch (err) {
-        console.error('Error in root route:', err);
-        res.status(500).send('Server error');
-    }
-});
+app.get('/', (req, res) => res.sendFile('index.html', { root: 'public' }));
 
 app.use((req, res) => {
     console.log('404 - Not Found:', req.url);
