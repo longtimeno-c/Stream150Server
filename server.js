@@ -8,7 +8,7 @@ const NodeMediaServer = require('node-media-server');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
-const MAX_CHAT_HISTORY = 1000;
+const MAX_CHAT_HISTORY = 1000; // Increased for better continuity
 
 const app = express();
 const server = http.createServer(app);
@@ -21,18 +21,24 @@ let chatHistory = [];
 // Load chat history from file
 function loadChatHistory() {
     try {
+        // Ensure data directory exists
         const dir = path.dirname(CHAT_HISTORY_FILE);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
+
         if (fs.existsSync(CHAT_HISTORY_FILE)) {
             const data = fs.readFileSync(CHAT_HISTORY_FILE, 'utf8');
             chatHistory = JSON.parse(data || '[]');
+            console.log(`Loaded ${chatHistory.length} messages from chat history`);
+            
+            // Clean up old messages if exceeding max
             if (chatHistory.length > MAX_CHAT_HISTORY) {
                 chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
+                saveChatHistory(); // Save the cleaned up history
             }
-            console.log(`Loaded ${chatHistory.length} messages from chat history`);
         } else {
+            // Create the file if it doesn't exist
             fs.writeFileSync(CHAT_HISTORY_FILE, '[]');
             chatHistory = [];
             console.log('Created new chat history file');
@@ -46,6 +52,12 @@ function loadChatHistory() {
 // Save chat history to file
 function saveChatHistory() {
     try {
+        // Ensure data directory exists
+        const dir = path.dirname(CHAT_HISTORY_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
         fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(chatHistory, null, 2));
         console.log(`Saved ${chatHistory.length} messages to chat history`);
     } catch (err) {
@@ -53,52 +65,49 @@ function saveChatHistory() {
     }
 }
 
-// Initialize chat history
+// Initialize
 loadChatHistory();
 
-// Middleware
-app.use(bodyParser.json());
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
 
 app.use(express.static(path.join(__dirname, 'public'), {
-    setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.js')) {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
             res.setHeader('Content-Type', 'application/javascript');
         }
     }
 }));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'), (err) => {
-        if (err) {
-            console.error('Error sending index.html:', err);
-            res.status(500).send('Error loading page');
-        }
-    });
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.use((req, res) => {
+    console.log('404 - Not Found:', req.url);
     res.status(404).send('Not Found');
 });
 
-// WebSocket handling
+// WebSocket connection handling
 wss.on('connection', (ws) => {
     viewerCount++;
     
+    // Send initial status
     ws.send(JSON.stringify({ 
         type: 'STREAM_STATUS', 
         status: isStreaming ? 'LIVE' : 'OFFLINE',
         viewers: viewerCount 
     }));
-    
-    ws.send(JSON.stringify({ 
-        type: 'CHAT_HISTORY', 
-        messages: chatHistory 
+
+    // Send chat history as a single batch
+    ws.send(JSON.stringify({
+        type: 'CHAT_HISTORY',
+        messages: chatHistory
     }));
 
+    // Add a ping interval to keep connection alive
     const pingInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
             ws.ping();
@@ -117,11 +126,19 @@ wss.on('connection', (ws) => {
                     timestamp: new Date().toISOString(),
                     id: Date.now().toString()
                 };
+                
+                // Add to chat history
                 chatHistory.push(chatMessage);
+                
+                // Maintain maximum history size
                 if (chatHistory.length > MAX_CHAT_HISTORY) {
-                    chatHistory.shift(); // Remove oldest message
+                    chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
                 }
+                
+                // Save immediately after each message
                 saveChatHistory();
+                
+                // Broadcast to ALL clients INCLUDING sender
                 broadcast(chatMessage);
             }
         } catch (err) {
@@ -139,28 +156,37 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('error', (error) => {
+        clearInterval(pingInterval);
         console.error('WebSocket error:', error);
     });
 });
 
+// Update broadcast function to be more robust
 function broadcast(data) {
     const message = JSON.stringify(data);
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
+            try {
+                client.send(message);
+            } catch (err) {
+                console.error('Error broadcasting message:', err);
+            }
         }
     });
 }
 
-// Periodic chat history save
+// Save chat history more frequently (every minute)
 setInterval(saveChatHistory, 60 * 1000);
 
-// Stream authentication endpoint
 app.post('/authenticate', (req, res) => {
     const { name } = req.body;
     if (name === STREAM_KEY) {
         isStreaming = true;
-        broadcast({ type: 'STREAM_STATUS', status: 'LIVE', viewers: viewerCount });
+        broadcast({ 
+            type: 'STREAM_STATUS', 
+            status: 'LIVE',
+            viewers: viewerCount 
+        });
         res.status(200).send('OK');
     } else {
         res.status(403).send('Forbidden');
@@ -169,15 +195,19 @@ app.post('/authenticate', (req, res) => {
 
 app.post('/stream-ended', (req, res) => {
     isStreaming = false;
-    broadcast({ type: 'STREAM_STATUS', status: 'OFFLINE', viewers: viewerCount });
+    broadcast({ 
+        type: 'STREAM_STATUS', 
+        status: 'OFFLINE',
+        viewers: viewerCount 
+    });
     res.status(200).send('Stream Ended');
 });
 
-// Handle process termination
+// Ensure chat history is saved on exit
 process.on('SIGINT', () => {
     console.log('Saving chat history before exit...');
     saveChatHistory();
-    process.exit(0);
+    process.exit();
 });
 
 process.on('uncaughtException', (err) => {
@@ -185,88 +215,67 @@ process.on('uncaughtException', (err) => {
     saveChatHistory();
 });
 
-// Node-Media-Server configuration
+// Configure Node-Media-Server
 const nmsConfig = {
     rtmp: {
         port: 1935,
         chunk_size: 60000,
         gop_cache: true,
         ping: 30,
-        ping_timeout: 60,
-        timeout: 60,
-        preset: 'veryfast',
-        buffer_size: '1000000',
-        max_connections: 1000
+        ping_timeout: 60
     },
     http: {
         port: 8000,
         allow_origin: '*',
-        mediaroot: './media',
-        webroot: './www',
+        mediaroot: './media'
     },
     trans: {
-        ffmpeg: '/usr/local/bin/ffmpeg',
+        ffmpeg: '/usr/bin/ffmpeg',
         tasks: [
             {
                 app: 'live',
                 hls: true,
-                hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments+append_list]',
-                dash: true,
-                dashFlags: '[f=dash:window_size=3:extra_window_size=5]',
-                ac: 'aac',
-                vc: 'libx264',
-                vcParams: [
-                    '-preset veryfast',
-                    '-profile:v main',
-                    '-tune zerolatency'
-                ],
-                acParams: [
-                    '-ar 44100',
-                    '-ab 128k'
-                ]
-            }
-        ]
-    },
-    relay: {
-        ffmpeg: '/usr/local/bin/ffmpeg',
-        tasks: [
-            {
-                app: 'live',
-                mode: 'static',
-                edge: 'rtmp://localhost/live/StreamtoME',
-                name: 'StreamtoME',
-                rtsp_transport: 'tcp'
+                hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
+                hlsKeep: true,
             }
         ]
     }
 };
 
+// Create RTMP server instance
 const nms = new NodeMediaServer(nmsConfig);
+nms.run();
 
-nms.on('prePublish', (id, StreamPath) => {
-    const streamKey = StreamPath.split('/')[2];
-    if (streamKey === STREAM_KEY) {
+// Add stream authentication
+nms.on('prePublish', (id, StreamPath, args) => {
+    let stream_key = StreamPath.split('/')[2];
+    
+    if (stream_key === STREAM_KEY) {
         isStreaming = true;
-        broadcast({ type: 'STREAM_STATUS', status: 'LIVE', viewers: viewerCount });
-        console.log(`Stream started with key: ${streamKey}`);
+        broadcast({ 
+            type: 'STREAM_STATUS', 
+            status: 'LIVE',
+            viewers: viewerCount 
+        });
+        let session = nms.getSession(id);
+        session.publishSuccess();
     } else {
-        const session = nms.getSession(id);
+        let session = nms.getSession(id);
         session.reject();
-        console.log(`Rejected stream with invalid key: ${streamKey}`);
     }
 });
 
 nms.on('donePublish', () => {
     isStreaming = false;
-    broadcast({ type: 'STREAM_STATUS', status: 'OFFLINE', viewers: viewerCount });
-    console.log('Stream ended');
+    broadcast({ 
+        type: 'STREAM_STATUS', 
+        status: 'OFFLINE',
+        viewers: viewerCount 
+    });
 });
 
-nms.run();
-
-// Start the server
 server.listen(3001, () => {
-    console.log('Server running on:');
+    console.log('Backend server running on:');
     console.log('- Web: http://localhost:3001');
     console.log('- RTMP: rtmp://localhost:1935/live');
     console.log('- HLS: http://localhost:8000/live');

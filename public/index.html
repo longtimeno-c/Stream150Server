@@ -99,5 +99,26 @@
     <script src="js/donations.js"></script>
     <script src="js/ui.js"></script>
     <script src="/js/countdown.js"></script>
+
+    <script>
+        const video = document.getElementById('videoPlayer');
+        const videoSrc = 'http://localhost:8000/live/StreamtoME/index.m3u8';
+        
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(videoSrc);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                video.play();
+            });
+        }
+        // For browsers that support HLS natively (Safari)
+        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = videoSrc;
+            video.addEventListener('loadedmetadata', function() {
+                video.play();
+            });
+        }
+    </script>
 </body>
 </html>
