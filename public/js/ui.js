@@ -1,3 +1,25 @@
+let hls;
+
+function initializeStream() {
+    const video = document.getElementById('videoPlayer');
+    
+    if (Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource('http://localhost:8000/live/StreamtoME/index.m3u8');
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            video.play();
+        });
+    }
+    // For browsers with native HLS support (Safari)
+    else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = 'http://localhost:8000/live/StreamtoME/index.m3u8';
+        video.addEventListener('loadedmetadata', function() {
+            video.play();
+        });
+    }
+}
+
 function toggleFullscreen() {
     const player = document.querySelector('.video-player');
     
@@ -65,11 +87,16 @@ function updateStreamStatus(data) {
     if (data.status === 'LIVE') {
         videoPlaceholder.style.display = 'none';
         videoPlayer.style.display = 'block';
-        videoPlaceholder.pause(); // Pause the logo video
+        videoPlaceholder.pause();
+        initializeStream(); // Initialize the stream when going live
     } else {
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
         videoPlaceholder.style.display = 'block';
         videoPlayer.style.display = 'none';
-        videoPlaceholder.play(); // Resume playing the logo video
+        videoPlaceholder.play();
     }
 }
 
