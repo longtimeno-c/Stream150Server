@@ -464,18 +464,9 @@ body {
     }
 }
 
-#countdown {
-    font-size: 8vw;
-    font-family: Arial, sans-serif;
+.below-chat-countdown {
+    margin-top: 1rem;
+    padding: 0.5rem;
     text-align: center;
-    color: #00ff00;
-    font-weight: bold;
-    background-color: #000000;
-    padding: 5vw 0;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 800px;
-    margin: 20px auto;
-    box-shadow: 0px 4px 15px rgba(0, 255, 0, 0.5);
-    overflow: hidden;
+    font-size: 0.9rem;
 }
