@@ -325,6 +325,24 @@ nms.on('postHLSSegment', (id, level, sn, duration, start, end) => {
     });
 });
 
+// Proxy HLS requests to the media server
+app.get('/live/:stream/:file', (req, res) => {
+    const stream = req.params.stream;
+    const file = req.params.file;
+    const hlsUrl = `http://localhost:8000/live/${stream}/${file}`;
+    
+    console.log(`📡 Proxying HLS request to: ${hlsUrl}`);
+    
+    // Simple proxy implementation
+    http.get(hlsUrl, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+    }).on('error', (err) => {
+        console.error('❌ Error proxying HLS request:', err);
+        res.status(500).send('Error proxying HLS request');
+    });
+});
+
 server.listen(3001, () => {
     const isProduction = process.env.NODE_ENV === 'production';
     const host = isProduction ? 'watch.stream150.com' : 'localhost';
