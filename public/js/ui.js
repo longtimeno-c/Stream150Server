@@ -6,9 +6,10 @@ let currentStream = null;
 function getStreamUrls(useLocalhost = false) {
     const host = useLocalhost ? 'localhost' : 'watch.stream150.com';
     const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+    const port = protocol === 'https' ? '' : ':8000';
     return {
-        hls: `${protocol}://${host}:8000/live/StreamtoME/index.m3u8`,
-        flv: `${protocol}://${host}:8000/live/StreamtoME.flv`
+        hls: `${protocol}://${host}${port}/live/StreamtoME/index.m3u8`,
+        flv: `${protocol}://${host}${port}/live/StreamtoME.flv`
     };
 }
 
@@ -162,54 +163,64 @@ function loadChatHistory(messages) {
 
 // Update WebSocket connection handling
 function initializeWebSocket() {
-    const wsUrl = window.WS_URL; // Use the global WS_URL set in index.html
+    // Determine WebSocket protocol based on page protocol
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host = window.location.hostname;
+    // Remove the port for HTTPS connections
+    const port = wsProtocol === 'wss' ? '' : ':3001';
+    const wsUrl = `${wsProtocol}://${host}${port}`;
+    
     let ws = null;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
     const reconnectDelay = 3000;
 
     function connect() {
-        ws = new WebSocket(wsUrl);
-        console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+        try {
+            ws = new WebSocket(wsUrl);
+            console.log('🔌 Attempting WebSocket connection to:', wsUrl);
 
-        ws.onopen = function() {
-            console.log('✅ WebSocket connection established');
-            reconnectAttempts = 0;
-        };
+            ws.onopen = function() {
+                console.log('✅ WebSocket connection established');
+                reconnectAttempts = 0;
+            };
 
-        ws.onmessage = function(event) {
-            try {
-                const data = JSON.parse(event.data);
-                console.log('📨 Received WebSocket message:', data);
-                
-                switch(data.type) {
-                    case 'STREAM_STATUS':
-                        handleStreamStatusUpdate(data.status);
-                        break;
-                    case 'VIEWER_COUNT':
-                        updateViewerCount(data.viewers);
-                        break;
-                    case 'CHAT_HISTORY':
-                        loadChatHistory(data.messages);
-                        break;
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('📨 Received WebSocket message:', data);
+                    
+                    switch(data.type) {
+                        case 'STREAM_STATUS':
+                            handleStreamStatusUpdate(data.status);
+                            break;
+                        case 'VIEWER_COUNT':
+                            updateViewerCount(data.viewers);
+                            break;
+                        case 'CHAT_HISTORY':
+                            loadChatHistory(data.messages);
+                            break;
+                    }
+                } catch (error) {
+                    console.error('❌ Error processing WebSocket message:', error);
                 }
-            } catch (error) {
-                console.error('❌ Error processing WebSocket message:', error);
-            }
-        };
+            };
 
-        ws.onerror = function(error) {
-            console.error('❌ WebSocket error:', error);
-        };
+            ws.onerror = function(error) {
+                console.error('❌ WebSocket error:', error);
+            };
 
-        ws.onclose = function() {
-            console.log('🔌 WebSocket connection closed');
-            if (reconnectAttempts < maxReconnectAttempts) {
-                reconnectAttempts++;
-                console.log(`🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
-                setTimeout(connect, reconnectDelay);
-            }
-        };
+            ws.onclose = function() {
+                console.log('🔌 WebSocket connection closed');
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    console.log(`🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                    setTimeout(connect, reconnectDelay);
+                }
+            };
+        } catch (error) {
+            console.error('Failed to create WebSocket connection:', error);
+        }
     }
 
     connect();
@@ -298,4 +309,60 @@ function handleStreamStatusUpdate(status) {
         }
         destroyStream();
     }
+}
+
+// Update the HLS initialization in your index.html or where it's being initialized
+if (Hls.isSupported()) {
+    console.log('✅ HLS.js is supported');
+    hls = new Hls({
+        debug: false,
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 90,
+        xhrSetup: function(xhr, url) {
+            xhr.withCredentials = false;
+            // Add error handling for CORS
+            xhr.onerror = function() {
+                console.error('XHR Error:', xhr.status, url);
+            };
+        },
+        // Add timeout settings
+        manifestLoadPolicy: {
+            default: {
+                maxTimeToFirstByteMs: 10000,
+                maxLoadTimeMs: 20000,
+                timeoutRetry: {
+                    maxNumRetry: 2,
+                    retryDelayMs: 1000,
+                    maxRetryDelayMs: 8000
+                },
+                errorRetry: {
+                    maxNumRetry: 2,
+                    retryDelayMs: 1000,
+                    maxRetryDelayMs: 8000
+                }
+            }
+        }
+    });
+
+    // Add better error handling
+    hls.on(Hls.Events.ERROR, function(event, data) {
+        console.warn('HLS Error:', data);
+        if (data.fatal) {
+            switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.log('Fatal network error encountered, trying to recover...');
+                    hls.startLoad();
+                    break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log('Fatal media error encountered, trying to recover...');
+                    hls.recoverMediaError();
+                    break;
+                default:
+                    console.error('Fatal error, cannot recover:', data);
+                    hls.destroy();
+                    break;
+            }
+        }
+    });
 }
