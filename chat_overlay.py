@@ -77,34 +77,66 @@ class YouTubeChatFetcher:
                 await asyncio.sleep(30)
 
     async def fetch_chat_messages(self):
-        try:
-            await self.get_live_chat_id()
-            if not self.live_chat_id:
-                return
+        while self.running:
+            try:
+                # Reset live_chat_id if we need to reconnect
+                self.live_chat_id = None
+                
+                # Try to get the live chat ID
+                await self.get_live_chat_id()
+                
+                if not self.live_chat_id:
+                    print("Failed to get live chat ID, will retry...")
+                    continue
 
-            url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={self.live_chat_id}&part=snippet,authorDetails&key={YOUTUBE_API_KEY}"
-            while self.running:
-                try:
-                    async with self.session.get(url) as resp:
-                        data = await resp.json()
-                        if "items" in data:
-                            for item in data["items"]:
-                                if item["id"] not in self.processed_message_ids:
-                                    self.processed_message_ids.add(item["id"])
-                                    username = item['authorDetails']['displayName']
-                                    message = item['snippet']['displayMessage']
-                                    msg = f"{username}: {message}"
-                                    self.send_to_websocket(msg, "youtube")
-                                    print(f"YouTube | {msg}")
-                    await asyncio.sleep(5)
-                except Exception as e:
-                    print(f"Error fetching chat messages: {e}")
-                    await asyncio.sleep(5)
-        finally:
-            # Ensure session is closed properly
-            if self.session and not self.session.closed:
-                await self.session.close()
-                print("YouTube session closed")
+                print(f"Successfully connected to YouTube live chat, monitoring for messages...")
+                url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={self.live_chat_id}&part=snippet,authorDetails&key={YOUTUBE_API_KEY}"
+                
+                # Once we have a live chat ID, keep fetching messages until an error occurs
+                while self.running and self.live_chat_id:
+                    try:
+                        async with self.session.get(url) as resp:
+                            if resp.status != 200:
+                                error_text = await resp.text()
+                                print(f"YouTube API error (status {resp.status}): {error_text}")
+                                # If we get an error, break out of this loop to reconnect
+                                self.live_chat_id = None
+                                break
+                                
+                            data = await resp.json()
+                            if "items" in data:
+                                for item in data["items"]:
+                                    if item["id"] not in self.processed_message_ids:
+                                        self.processed_message_ids.add(item["id"])
+                                        username = item['authorDetails']['displayName']
+                                        message = item['snippet']['displayMessage']
+                                        msg = f"{username}: {message}"
+                                        self.send_to_websocket(msg, "youtube")
+                                        print(f"YouTube | {msg}")
+                        await asyncio.sleep(5)
+                    except Exception as e:
+                        print(f"Error fetching chat messages: {e}")
+                        # If we get an exception, break out of this loop to reconnect
+                        self.live_chat_id = None
+                        break
+                
+                # If we're here, we need to reconnect - wait a bit before trying again
+                print("YouTube connection lost, will attempt to reconnect in 30s...")
+                await asyncio.sleep(30)
+                
+            except Exception as e:
+                print(f"Unexpected error in YouTube chat fetcher: {e}")
+                await asyncio.sleep(30)
+                
+            # Limit the size of processed_message_ids to prevent memory issues during long runs
+            if len(self.processed_message_ids) > 10000:
+                print(f"Clearing message ID cache (was {len(self.processed_message_ids)} items)")
+                self.processed_message_ids.clear()
+                
+        # This will only execute if self.running becomes False
+        if self.session and not self.session.closed:
+            await self.session.close()
+            print("YouTube session closed")
 
     def send_to_websocket(self, msg, platform):
         if self.ws and self.ws.connected:
@@ -163,8 +195,25 @@ if __name__ == "__main__":
             twitch_task = asyncio.create_task(twitch_bot.start())
             youtube_task = asyncio.create_task(youtube_fetcher.fetch_chat_messages())
             
-            # Wait for either task to complete or for keyboard interrupt
-            await asyncio.gather(twitch_task, youtube_task)
+            # Wait for both tasks to complete (they should run indefinitely)
+            done, pending = await asyncio.wait(
+                [twitch_task, youtube_task],
+                return_when=asyncio.FIRST_COMPLETED  # Only exit if one of them completes
+            )
+            
+            # If we get here, one of the tasks completed or failed
+            for task in done:
+                try:
+                    # This will raise any exception that occurred in the task
+                    task.result()
+                    print(f"Task completed unexpectedly: {task}")
+                except Exception as e:
+                    print(f"Task failed with error: {e}")
+            
+            # Cancel any pending tasks
+            for task in pending:
+                task.cancel()
+                
         except asyncio.CancelledError:
             print("Tasks cancelled")
         finally:
@@ -175,12 +224,17 @@ if __name__ == "__main__":
         # Run everything in the main thread with a shared event loop
         loop.run_until_complete(run_both())
     except KeyboardInterrupt:
-        print("Shutting down...")
+        print("Shutting down due to keyboard interrupt...")
+    finally:
         # Cancel all tasks
         for task in asyncio.all_tasks(loop):
             task.cancel()
+        
         # Run the loop a bit more to execute the cancellations
-        loop.run_until_complete(asyncio.sleep(0.1))
-    finally:
+        try:
+            loop.run_until_complete(asyncio.sleep(1))
+        except asyncio.CancelledError:
+            pass
+            
         loop.close()
         print("Event loop closed")
