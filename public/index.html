@@ -56,6 +56,10 @@
         <div class="chat-container">
             <div class="chat-header">
                 <h3>Live Chat</h3>
+                <div class="username-display">
+                    <span>You: <span class="current-username">Anonymous</span></span>
+                    <button class="username-change-btn" onclick="UserManager.changeUsername()">Change</button>
+                </div>
                 <span class="chat-status"></span>
             </div>
             <div id="chatBox" class="chat-box"></div>
@@ -80,6 +84,10 @@
     <div class="mobile-chat-overlay" id="mobileChatOverlay" style="display: none;">
         <div class="mobile-chat-header">
             <h3>Live Chat</h3>
+            <div class="mobile-username-display">
+                <span>You: <span class="current-username">Anonymous</span></span>
+                <button class="username-change-btn" onclick="UserManager.changeUsername()">Change</button>
+            </div>
             <button class="close-chat-btn" onclick="toggleChat()">×</button>
         </div>
         <div id="mobileChatBox" class="chat-box"></div>
@@ -386,6 +394,8 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/user.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/websocket.js"></script>
     <script src="js/chat.js"></script>
@@ -393,6 +403,23 @@
     <script src="js/ui.js"></script>
     <script src="js/countdown.js"></script>
     <script>
+        // Update username displays when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for UserManager to initialize
+            setTimeout(function() {
+                // Get the current username
+                const username = UserManager.getUsername();
+                
+                // Update all username displays
+                const usernameElements = document.querySelectorAll('.current-username');
+                usernameElements.forEach(element => {
+                    element.textContent = username;
+                });
+                
+                console.log('Initial username set to:', username);
+            }, 100);
+        });
+        
         function debugChatHistory() {
             console.log('Current chat history:', chatHistory);
             alert(`Chat history contains ${chatHistory.length} messages. Check console for details.`);

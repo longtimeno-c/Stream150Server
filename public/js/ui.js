@@ -25,8 +25,39 @@ function adjustForMobile() {
     }
 }
 
-// Call adjustForMobile on page load and resize
-document.addEventListener('DOMContentLoaded', adjustForMobile);
+// Initialize UI components
+function initializeUI() {
+    console.log('Initializing UI components...');
+    
+    // Adjust for mobile devices
+    adjustForMobile();
+    
+    // Get current username from UserManager and update immediately
+    currentUsername = UserManager.getUsername();
+    console.log('Current username on init:', currentUsername);
+    
+    // Update all username displays with the current username
+    updateUsernameDisplays();
+    
+    // Add username displays to DOM if they don't exist
+    addUsernameDisplaysToDOM();
+    
+    // Also set up a backup to ensure displays exist after a short delay
+    // This helps with race conditions where DOM elements might not be ready
+    setTimeout(() => {
+        ensureUsernameDisplaysExist();
+        updateUsernameDisplays(); // Update again after ensuring displays exist
+    }, 1000);
+    
+    // Set up a MutationObserver to watch for DOM changes
+    setupMutationObserver();
+    
+    // Set up periodic username check
+    setupPeriodicUsernameCheck();
+}
+
+// Call initialization on page load
+document.addEventListener('DOMContentLoaded', initializeUI);
 window.addEventListener('resize', adjustForMobile);
 
 function getStreamUrls(useLocalhost = false) {
@@ -274,13 +305,16 @@ function updateQualitySelector(qualities, hls) {
 }
 
 // Listen for username changes
-document.addEventListener('username-loaded', function(e) {
+document.addEventListener(UserManager.EVENTS.USERNAME_LOADED, function(e) {
     currentUsername = e.detail.username;
     // Update any UI elements that display the username
     updateUsernameDisplays();
+    
+    // Ensure username displays are added to UI
+    ensureUsernameDisplaysExist();
 });
 
-document.addEventListener('username-changed', function(e) {
+document.addEventListener(UserManager.EVENTS.USERNAME_CHANGED, function(e) {
     currentUsername = e.detail.username;
     // Update any UI elements that display the username
     updateUsernameDisplays();
@@ -288,34 +322,87 @@ document.addEventListener('username-changed', function(e) {
 
 // Update all username displays in the UI
 function updateUsernameDisplays() {
-    // Update main chat header
-    const mainUsernameElement = document.querySelector('.chat-header .current-username');
-    if (mainUsernameElement) {
-        mainUsernameElement.textContent = currentUsername;
-    }
+    // Get the latest username from UserManager
+    const latestUsername = UserManager.getUsername();
     
-    // Update mobile chat header
-    const mobileUsernameElement = document.querySelector('.mobile-chat-header .current-username');
-    if (mobileUsernameElement) {
-        mobileUsernameElement.textContent = currentUsername;
-    }
+    // Update our local variable
+    currentUsername = latestUsername;
+    
+    console.log('Updating username displays with:', currentUsername);
+    
+    // Update all username elements with the current-username class
+    const usernameElements = document.querySelectorAll('.current-username');
+    usernameElements.forEach(element => {
+        if (element.textContent !== currentUsername) {
+            element.textContent = currentUsername;
+            
+            // Add a highlight effect to show the change
+            element.classList.add('username-updated');
+            setTimeout(() => {
+                element.classList.remove('username-updated');
+            }, 1500);
+        }
+    });
 }
 
-// Add username display to mobile chat header
-function updateMobileChatHeader() {
+// Make updateUsernameDisplays available globally
+window.updateUsernameDisplays = updateUsernameDisplays;
+
+// Ensure username displays exist in all relevant UI components
+function ensureUsernameDisplaysExist() {
+    console.log('Ensuring username displays exist...');
+    
+    // Check if main chat header has username display
+    const chatHeader = document.querySelector('.chat-header');
+    if (chatHeader && !chatHeader.querySelector('.username-display')) {
+        console.log('Adding missing username display to main chat header');
+        const usernameDisplay = createUsernameDisplay();
+        
+        // Insert after the h3 element
+        const h3Element = chatHeader.querySelector('h3');
+        if (h3Element && h3Element.nextSibling) {
+            chatHeader.insertBefore(usernameDisplay, h3Element.nextSibling);
+        } else {
+            chatHeader.appendChild(usernameDisplay);
+        }
+    }
+    
+    // Check if mobile chat header has username display
     const mobileChatHeader = document.querySelector('.mobile-chat-header');
     if (mobileChatHeader && !mobileChatHeader.querySelector('.mobile-username-display')) {
-        const usernameDisplay = document.createElement('div');
-        usernameDisplay.className = 'mobile-username-display';
-        usernameDisplay.innerHTML = `
-            <span>You: <span class="current-username">${currentUsername}</span></span>
-            <button class="username-change-btn" onclick="changeUsername()">Change</button>
-        `;
+        console.log('Adding missing username display to mobile chat header');
+        const mobileUsernameDisplay = createMobileUsernameDisplay();
         
         // Insert before the close button
         const closeButton = mobileChatHeader.querySelector('.close-chat-btn');
-        mobileChatHeader.insertBefore(usernameDisplay, closeButton);
+        if (closeButton) {
+            mobileChatHeader.insertBefore(mobileUsernameDisplay, closeButton);
+        } else {
+            mobileChatHeader.appendChild(mobileUsernameDisplay);
+        }
     }
+}
+
+// Create a username display element
+function createUsernameDisplay() {
+    const usernameDisplay = document.createElement('div');
+    usernameDisplay.className = 'username-display';
+    usernameDisplay.innerHTML = `
+        <span>You: <span class="current-username">${currentUsername}</span></span>
+        <button class="username-change-btn" onclick="UserManager.changeUsername()">Change</button>
+    `;
+    return usernameDisplay;
+}
+
+// Create a mobile username display element
+function createMobileUsernameDisplay() {
+    const usernameDisplay = document.createElement('div');
+    usernameDisplay.className = 'mobile-username-display';
+    usernameDisplay.innerHTML = `
+        <span>You: <span class="current-username">${currentUsername}</span></span>
+        <button class="username-change-btn" onclick="UserManager.changeUsername()">Change</button>
+    `;
+    return usernameDisplay;
 }
 
 // Update the toggleChat function to include username display
@@ -604,4 +691,101 @@ function jumpToLive() {
         
         console.log('Jumped to live edge of stream');
     }
+}
+
+// Add username displays directly to the DOM
+function addUsernameDisplaysToDOM() {
+    console.log('Adding username displays to DOM...');
+    
+    // Add to main chat header
+    const chatHeader = document.querySelector('.chat-header');
+    if (chatHeader) {
+        // Remove any existing username display to avoid duplicates
+        const existingDisplay = chatHeader.querySelector('.username-display');
+        if (existingDisplay) {
+            chatHeader.removeChild(existingDisplay);
+        }
+        
+        // Create and add the username display
+        const usernameDisplay = createUsernameDisplay();
+        
+        // Insert after the h3 element
+        const h3Element = chatHeader.querySelector('h3');
+        if (h3Element && h3Element.nextSibling) {
+            chatHeader.insertBefore(usernameDisplay, h3Element.nextSibling);
+        } else {
+            chatHeader.appendChild(usernameDisplay);
+        }
+        
+        console.log('Added username display to main chat header');
+    } else {
+        console.warn('Chat header not found in DOM');
+    }
+    
+    // Add to mobile chat header
+    const mobileChatHeader = document.querySelector('.mobile-chat-header');
+    if (mobileChatHeader) {
+        // Remove any existing username display to avoid duplicates
+        const existingDisplay = mobileChatHeader.querySelector('.mobile-username-display');
+        if (existingDisplay) {
+            mobileChatHeader.removeChild(existingDisplay);
+        }
+        
+        // Create and add the mobile username display
+        const mobileUsernameDisplay = createMobileUsernameDisplay();
+        
+        // Insert before the close button
+        const closeButton = mobileChatHeader.querySelector('.close-chat-btn');
+        if (closeButton) {
+            mobileChatHeader.insertBefore(mobileUsernameDisplay, closeButton);
+        } else {
+            mobileChatHeader.appendChild(mobileUsernameDisplay);
+        }
+        
+        console.log('Added username display to mobile chat header');
+    }
+}
+
+// Set up a MutationObserver to watch for DOM changes
+function setupMutationObserver() {
+    // Create a MutationObserver to watch for changes to the DOM
+    const observer = new MutationObserver((mutations) => {
+        // Check if any mutations affected the chat headers
+        const chatHeaderMutated = mutations.some(mutation => {
+            return mutation.target.classList && 
+                  (mutation.target.classList.contains('chat-header') || 
+                   mutation.target.classList.contains('mobile-chat-header') ||
+                   mutation.target.closest('.chat-header') ||
+                   mutation.target.closest('.mobile-chat-header'));
+        });
+        
+        // If chat headers were affected, ensure username displays exist
+        if (chatHeaderMutated) {
+            console.log('Chat header changed, ensuring username displays exist');
+            ensureUsernameDisplaysExist();
+        }
+    });
+    
+    // Start observing the document with the configured parameters
+    observer.observe(document.body, { 
+        childList: true, 
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+    
+    console.log('MutationObserver set up to watch for DOM changes');
+}
+
+// Set up periodic check to ensure username is up-to-date
+function setupPeriodicUsernameCheck() {
+    // Check every 5 seconds
+    setInterval(() => {
+        const storedUsername = UserManager.getUsername();
+        if (storedUsername !== currentUsername) {
+            console.log('Username mismatch detected, updating from:', currentUsername, 'to:', storedUsername);
+            currentUsername = storedUsername;
+            updateUsernameDisplays();
+        }
+    }, 5000);
 }
