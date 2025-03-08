@@ -11,14 +11,23 @@
             background-color: #f9f9f9;
             color: #333;
         }
-        .container {
+        .main-container {
+            display: flex;
             max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 20px auto;
+            gap: 20px;
+        }
+        .video-container {
+            flex: 2;
+        }
+        .chat-container {
+            flex: 1;
+            background: #fff;
+            border-radius: 8px;
+            padding: 10px;
         }
         .video-player {
             width: 100%;
-            max-width: 800px;
             background-color: #000;
             border-radius: 8px;
             overflow: hidden;
@@ -65,27 +74,66 @@
             padding: 10px;
             background-color: #fff;
             border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .donation-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .chat-input {
+            width: 100%;
+            padding: 5px;
+        }
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="video-player">
-            <div id="videoPlaceholder" class="video-placeholder">
-                Waiting for stream...
-            </div>
-            <div class="status-bar">
-                <div id="status" class="status-indicator offline">
-                    <span class="status-dot"></span>
-                    <span id="statusText">OFFLINE</span>
+    <div class="main-container">
+        <div class="video-container">
+            <div class="video-player">
+                <div id="videoPlaceholder" class="video-placeholder">
+                    Waiting for stream...
                 </div>
-                <div class="viewer-count">
-                    <span id="viewerCount">0</span> viewers
+                <div class="status-bar">
+                    <div id="status" class="status-indicator offline">
+                        <span class="status-dot"></span>
+                        <span id="statusText">OFFLINE</span>
+                    </div>
+                    <div class="viewer-count">
+                        <span id="viewerCount">0</span> viewers
+                    </div>
+                </div>
+                <div class="controls">
+                    <button onclick="toggleFullscreen()">Full Screen</button>
+                    <select id="qualitySelect" onchange="changeQuality()">
+                        <option value="720p">720p</option>
+                        <option value="1080p">1080p</option>
+                    </select>
+                </div>
+                <div class="donation-buttons">
+                    <button onclick="window.open('https://tangia.co/donate')">Tangia Donation</button>
+                    <button onclick="window.open('https://paypal.me/donate')">PayPal Donation</button>
                 </div>
             </div>
-            <div class="controls">
-                <!-- Add player controls here if needed -->
-            </div>
+        </div>
+        <div class="chat-container">
+            <h3>Live Chat</h3>
+            <div id="chatBox" class="chat-box"></div>
+            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message...">
+            <button onclick="sendChat()">Send</button>
         </div>
     </div>
 
@@ -95,6 +143,8 @@
         const statusText = document.getElementById('statusText');
         const viewerCount = document.getElementById('viewerCount');
         const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const chatBox = document.getElementById('chatBox');
+        const chatInput = document.getElementById('chatInput');
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
@@ -110,6 +160,11 @@
                 }
             } else if (data.type === 'VIEWER_COUNT') {
                 viewerCount.textContent = data.viewers;
+            } else if (data.type === 'CHAT_MESSAGE') {
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = data.message;
+                chatBox.appendChild(messageDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
             }
         };
 
@@ -117,6 +172,39 @@
             statusText.textContent = 'DISCONNECTED';
             statusElement.className = 'status-indicator offline';
         };
+
+        function toggleFullscreen() {
+            const player = document.querySelector('.video-player');
+            if (!document.fullscreenElement) {
+                player.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function changeQuality() {
+            const quality = document.getElementById('qualitySelect').value;
+            // Add your quality change logic here
+            console.log('Quality changed to:', quality);
+        }
+
+        function sendChat() {
+            const message = chatInput.value.trim();
+            if (message) {
+                ws.send(JSON.stringify({
+                    type: 'CHAT_MESSAGE',
+                    message: message
+                }));
+                chatInput.value = '';
+            }
+        }
+
+        // Press Enter to send chat
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChat();
+            }
+        });
     </script>
 </body>
 </html>
