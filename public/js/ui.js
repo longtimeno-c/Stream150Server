@@ -5,11 +5,10 @@ let currentStream = null;
 
 function getStreamUrls(useLocalhost = false) {
     const host = useLocalhost ? 'localhost' : 'watch.stream150.com';
-    const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
-    const port = protocol === 'https' ? '' : ':8000';
+    // Always use HTTP for stream server since it doesn't support HTTPS
     return {
-        hls: `${protocol}://${host}${port}/live/StreamtoME/index.m3u8`,
-        flv: `${protocol}://${host}${port}/live/StreamtoME.flv`
+        hls: `http://${host}:8000/live/StreamtoME/index.m3u8`,
+        flv: `http://${host}:8000/live/StreamtoME.flv`
     };
 }
 
@@ -17,41 +16,137 @@ function initializeStream(useLocalhost = false) {
     console.log('🔍 initializeStream called');
     console.log('🎥 Initializing stream player...');
     const video = document.getElementById('videoPlayer');
+    const videoContainer = document.querySelector('.video-container');
     
-    if (!video) {
-        console.error('Video element not found');
+    if (!video || !videoContainer) {
+        console.error('Video elements not found');
         return;
     }
 
+    // Add loading indicator
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.innerHTML = `
+        <div class="spinner"></div>
+        <div class="loading-text">Connecting to stream...</div>
+    `;
+    videoContainer.appendChild(loadingIndicator);
+
+    // Add video event listeners
+    video.addEventListener('waiting', () => {
+        console.log('⏳ Video buffering...');
+        loadingIndicator.style.display = 'flex';
+        loadingIndicator.querySelector('.loading-text').textContent = 'Buffering...';
+    });
+
+    video.addEventListener('playing', () => {
+        console.log('▶️ Video playing');
+        loadingIndicator.style.display = 'none';
+    });
+
+    video.addEventListener('canplay', () => {
+        loadingIndicator.style.display = 'none';
+    });
+
     const urls = getStreamUrls(useLocalhost);
     
-    if (typeof flvjs !== 'undefined' && flvjs.isSupported()) {
-        console.log('✅ Initializing FLV player');
-        const flvPlayer = flvjs.createPlayer({
-            type: 'flv',
-            url: urls.flv,
-            isLive: true,
-            hasAudio: true,
-            hasVideo: true,
-            enableStashBuffer: false,
-            cors: true,
-            withCredentials: false,
-            timeout: 5000,
-            seekRetry: 5,
-            maxRetryCount: 3
-        });
+    if (Hls.isSupported()) {
+        console.log('✅ Initializing HLS player');
+        if (hls) {
+            hls.destroy();
+        }
         
-        flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
-            console.error('FLV Player Error:', errorType, errorDetail);
-            flvPlayer.destroy();
+        hls = new Hls({
+            debug: false,
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            maxBufferSize: 60 * 1000 * 1000, // 60MB
+            maxBufferHole: 0.5,
+            highBufferWatchdogPeriod: 2,
+            xhrSetup: function(xhr, url) {
+                xhr.withCredentials = false;
+                // Handle mixed content
+                if (window.location.protocol === 'https:' && url.startsWith('http:')) {
+                    url = url.replace('http:', 'https:');
+                }
+            },
+            manifestLoadPolicy: {
+                default: {
+                    maxTimeToFirstByteMs: 10000,
+                    maxLoadTimeMs: 20000,
+                    timeoutRetry: {
+                        maxNumRetry: 3,
+                        retryDelayMs: 1000,
+                        maxRetryDelayMs: 8000
+                    },
+                    errorRetry: {
+                        maxNumRetry: 3,
+                        retryDelayMs: 1000,
+                        maxRetryDelayMs: 8000
+                    }
+                }
+            }
         });
 
-        flvPlayer.attachMediaElement(video);
-        flvPlayer.load();
-        flvPlayer.play();
+        hls.on(Hls.Events.ERROR, function(event, data) {
+            console.warn('HLS Error:', data);
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.log('Fatal network error encountered, trying to recover...');
+                        if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) {
+                            // If HTTPS fails, try HTTP
+                            const httpUrl = urls.hls.replace('https:', 'http:');
+                            console.log('Retrying with HTTP:', httpUrl);
+                            hls.loadSource(httpUrl);
+                        } else {
+                            hls.startLoad();
+                        }
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log('Fatal media error encountered, trying to recover...');
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        console.error('Fatal error, cannot recover:', data);
+                        hls.destroy();
+                        break;
+                }
+            }
+        });
+
+        hls.loadSource(urls.hls);
+        hls.attachMedia(video);
         
-        currentStream = flvPlayer;
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log('✅ HLS manifest parsed, attempting playback');
+            video.play().catch(e => console.log('❌ Autoplay failed:', e));
+        });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // For Safari - fallback to native HLS support
+        video.src = urls.hls;
+        video.addEventListener('loadedmetadata', () => {
+            video.play().catch(e => console.log('❌ Autoplay failed:', e));
+        });
     }
+
+    let connectionTimeout = setTimeout(() => {
+        if (!video.readyState) {
+            loadingIndicator.querySelector('.loading-text').textContent = 'Connection failed. Retrying...';
+            // Attempt to reinitialize
+            destroyStream();
+            initializeStream(useLocalhost);
+        }
+    }, 10000); // 10 second timeout
+
+    video.addEventListener('playing', () => {
+        console.log('▶️ Video playing');
+        loadingIndicator.style.display = 'none';
+        clearTimeout(connectionTimeout); // Clear the timeout when video starts playing
+    });
 }
 
 function destroyStream() {
@@ -309,60 +404,4 @@ function handleStreamStatusUpdate(status) {
         }
         destroyStream();
     }
-}
-
-// Update the HLS initialization in your index.html or where it's being initialized
-if (Hls.isSupported()) {
-    console.log('✅ HLS.js is supported');
-    hls = new Hls({
-        debug: false,
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90,
-        xhrSetup: function(xhr, url) {
-            xhr.withCredentials = false;
-            // Add error handling for CORS
-            xhr.onerror = function() {
-                console.error('XHR Error:', xhr.status, url);
-            };
-        },
-        // Add timeout settings
-        manifestLoadPolicy: {
-            default: {
-                maxTimeToFirstByteMs: 10000,
-                maxLoadTimeMs: 20000,
-                timeoutRetry: {
-                    maxNumRetry: 2,
-                    retryDelayMs: 1000,
-                    maxRetryDelayMs: 8000
-                },
-                errorRetry: {
-                    maxNumRetry: 2,
-                    retryDelayMs: 1000,
-                    maxRetryDelayMs: 8000
-                }
-            }
-        }
-    });
-
-    // Add better error handling
-    hls.on(Hls.Events.ERROR, function(event, data) {
-        console.warn('HLS Error:', data);
-        if (data.fatal) {
-            switch (data.type) {
-                case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.log('Fatal network error encountered, trying to recover...');
-                    hls.startLoad();
-                    break;
-                case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.log('Fatal media error encountered, trying to recover...');
-                    hls.recoverMediaError();
-                    break;
-                default:
-                    console.error('Fatal error, cannot recover:', data);
-                    hls.destroy();
-                    break;
-            }
-        }
-    });
 }
