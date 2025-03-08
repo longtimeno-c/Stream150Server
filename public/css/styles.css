@@ -34,12 +34,13 @@ body {
 
 .video-container {
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    position: relative;
+    aspect-ratio: 16/9;
 }
 
 .video-player {
+    width: 100%;
+    height: 100%;
     background: #000;
     border-radius: 8px;
     overflow: hidden;
@@ -454,4 +455,39 @@ body {
     .chat-container {
         display: none;
     }
-} 
+}
+
+/* Fullscreen styles */
+.video-player:fullscreen {
+    border-radius: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+.video-player:-webkit-full-screen {
+    border-radius: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+    .controls {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(45, 45, 45, 0.9);
+        z-index: 1000;
+    }
+
+    .fullscreen-btn {
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    .fullscreen-btn:hover {
+        background: rgba(255, 255, 255, 1);
+    }
+}
