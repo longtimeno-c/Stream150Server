@@ -192,7 +192,52 @@ const nmsConfig = {
         chunk_size: 60000,
         gop_cache: true,
         ping: 30,
-        ping_timeout: 60
+        ping_timeout: 60,
+        timeout: 60,
+        preset: 'veryfast',
+        buffer_size: '1000000',
+        max_connections: 1000
+    },
+    http: {
+        port: 8000,
+        allow_origin: '*',
+        mediaroot: './media',
+        webroot: './www',
+    },
+    trans: {
+        ffmpeg: '/usr/local/bin/ffmpeg',
+        tasks: [
+            {
+                app: 'live',
+                hls: true,
+                hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments+append_list]',
+                dash: true,
+                dashFlags: '[f=dash:window_size=3:extra_window_size=5]',
+                ac: 'aac',
+                vc: 'libx264',
+                vcParams: [
+                    '-preset veryfast',
+                    '-profile:v main',
+                    '-tune zerolatency'
+                ],
+                acParams: [
+                    '-ar 44100',
+                    '-ab 128k'
+                ]
+            }
+        ]
+    },
+    relay: {
+        ffmpeg: '/usr/local/bin/ffmpeg',
+        tasks: [
+            {
+                app: 'live',
+                mode: 'static',
+                edge: 'rtmp://localhost/live/StreamtoME',
+                name: 'StreamtoME',
+                rtsp_transport: 'tcp'
+            }
+        ]
     }
 };
 
