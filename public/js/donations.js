@@ -56,8 +56,14 @@ function calculateStreamLength(donationAmount) {
 }
 
 async function updateDonationUI() {
-    // Store the previous value in case the fetch fails
     const progressBar = document.getElementById('progress-bar');
+    // Set initial width to 0% if not already set
+    if (!progressBar.style.width) {
+        progressBar.style.width = '0%';
+        progressBar.innerText = '0%';
+    }
+    
+    // Store the previous value in case the fetch fails
     const previousWidth = progressBar.style.width;
     
     try {
