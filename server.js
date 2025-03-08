@@ -167,6 +167,32 @@ app.get('/live/:stream/*', (req, res) => {
     });
 });
 
+// Add this route to check if the HLS stream exists
+app.get('/check-stream', (req, res) => {
+    const hlsUrl = `http://localhost:8000/live/StreamtoME/index.m3u8`;
+    
+    console.log(`🔍 Checking if HLS stream exists at: ${hlsUrl}`);
+    
+    const checkReq = http.get(hlsUrl, (checkRes) => {
+        console.log(`✅ HLS stream check result: ${checkRes.statusCode}`);
+        
+        res.json({
+            exists: checkRes.statusCode === 200,
+            statusCode: checkRes.statusCode,
+            isStreaming: isStreaming
+        });
+    });
+    
+    checkReq.on('error', (err) => {
+        console.error(`❌ Error checking HLS stream:`, err);
+        res.status(500).json({
+            exists: false,
+            error: err.message,
+            isStreaming: isStreaming
+        });
+    });
+});
+
 // Then your existing routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -407,6 +433,23 @@ nms.on('postHLSSegment', (id, level, sn, duration, start, end) => {
         end,
         path: `live/StreamtoME/${sn}.ts`
     });
+});
+
+// Add this after nms.run()
+console.log('📂 Media root directory:', path.resolve(config.http.mediaroot));
+console.log('📂 Expected HLS path:', path.resolve(config.http.mediaroot, 'live', STREAM_KEY));
+
+// Check if the directory exists
+const hlsDir = path.resolve(config.http.mediaroot, 'live', STREAM_KEY);
+fs.access(hlsDir, fs.constants.F_OK, (err) => {
+    if (err) {
+        console.log('⚠️ HLS directory does not exist yet:', hlsDir);
+        // Create the directory structure
+        fs.mkdirSync(hlsDir, { recursive: true });
+        console.log('✅ Created HLS directory:', hlsDir);
+    } else {
+        console.log('✅ HLS directory exists:', hlsDir);
+    }
 });
 
 server.listen(3001, () => {
