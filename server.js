@@ -1,78 +1,21 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const bodyParser = require('body-parser');
 const path = require('path');
-const fs = require('fs');
-const NodeMediaServer = require('node-media-server');
-
-const STREAM_KEY = 'StreamtoME';
-const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
-const MAX_CHAT_HISTORY = 1000; // Increased for better continuity
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let isStreaming = false;
 let viewerCount = 0;
-let chatHistory = [];
 
-// Load chat history from file
-function loadChatHistory() {
-    try {
-        // Ensure data directory exists
-        const dir = path.dirname(CHAT_HISTORY_FILE);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-
-        if (fs.existsSync(CHAT_HISTORY_FILE)) {
-            const data = fs.readFileSync(CHAT_HISTORY_FILE, 'utf8');
-            chatHistory = JSON.parse(data || '[]');
-            console.log(`Loaded ${chatHistory.length} messages from chat history`);
-            
-            // Clean up old messages if exceeding max
-            if (chatHistory.length > MAX_CHAT_HISTORY) {
-                chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
-                saveChatHistory(); // Save the cleaned up history
-            }
-        } else {
-            // Create the file if it doesn't exist
-            fs.writeFileSync(CHAT_HISTORY_FILE, '[]');
-            chatHistory = [];
-            console.log('Created new chat history file');
-        }
-    } catch (err) {
-        console.error('Error loading chat history:', err);
-        chatHistory = [];
-    }
-}
-
-// Save chat history to file
-function saveChatHistory() {
-    try {
-        // Ensure data directory exists
-        const dir = path.dirname(CHAT_HISTORY_FILE);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        
-        fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(chatHistory, null, 2));
-        console.log(`Saved ${chatHistory.length} messages to chat history`);
-    } catch (err) {
-        console.error('Error saving chat history:', err);
-    }
-}
-
-// Initialize
-loadChatHistory();
-
+// Middleware to log requests
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
 
+// Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public'), {
     setHeaders: (res, path) => {
         if (path.endsWith('.js')) {
@@ -81,10 +24,22 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
 }));
 
+// Serve the main page
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'), (err) => {
+            if (err) {
+                console.error('Error sending index.html:', err);
+                res.status(500).send('Error loading page');
+            }
+        });
+    } catch (err) {
+        console.error('Error in root route:', err);
+        res.status(500).send('Server error');
+    }
 });
 
+// Handle 404s
 app.use((req, res) => {
     console.log('404 - Not Found:', req.url);
     res.status(404).send('Not Found');
@@ -94,20 +49,13 @@ app.use((req, res) => {
 wss.on('connection', (ws) => {
     viewerCount++;
     
-    // Send initial status
+    // Send initial status (no streaming status in this simplified version)
     ws.send(JSON.stringify({ 
-        type: 'STREAM_STATUS', 
-        status: isStreaming ? 'LIVE' : 'OFFLINE',
+        type: 'VIEWER_COUNT', 
         viewers: viewerCount 
     }));
 
-    // Send chat history as a single batch
-    ws.send(JSON.stringify({
-        type: 'CHAT_HISTORY',
-        messages: chatHistory
-    }));
-
-    // Add a ping interval to keep connection alive
+    // Keep connection alive with ping
     const pingInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
             ws.ping();
@@ -126,19 +74,7 @@ wss.on('connection', (ws) => {
                     timestamp: new Date().toISOString(),
                     id: Date.now().toString()
                 };
-                
-                // Add to chat history
-                chatHistory.push(chatMessage);
-                
-                // Maintain maximum history size
-                if (chatHistory.length > MAX_CHAT_HISTORY) {
-                    chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
-                }
-                
-                // Save immediately after each message
-                saveChatHistory();
-                
-                // Broadcast to ALL clients INCLUDING sender
+                // Broadcast chat message to all clients
                 broadcast(chatMessage);
             }
         } catch (err) {
@@ -156,12 +92,11 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('error', (error) => {
-        clearInterval(pingInterval);
         console.error('WebSocket error:', error);
     });
 });
 
-// Update broadcast function to be more robust
+// Broadcast function
 function broadcast(data) {
     const message = JSON.stringify(data);
     wss.clients.forEach((client) => {
@@ -175,97 +110,13 @@ function broadcast(data) {
     });
 }
 
-// Save chat history more frequently (every minute)
-setInterval(saveChatHistory, 60 * 1000);
-
-app.post('/authenticate', (req, res) => {
-    const { name } = req.body;
-    if (name === STREAM_KEY) {
-        isStreaming = true;
-        broadcast({ 
-            type: 'STREAM_STATUS', 
-            status: 'LIVE',
-            viewers: viewerCount 
-        });
-        res.status(200).send('OK');
-    } else {
-        res.status(403).send('Forbidden');
-    }
-});
-
-app.post('/stream-ended', (req, res) => {
-    isStreaming = false;
-    broadcast({ 
-        type: 'STREAM_STATUS', 
-        status: 'OFFLINE',
-        viewers: viewerCount 
-    });
-    res.status(200).send('Stream Ended');
-});
-
-// Ensure chat history is saved on exit
-process.on('SIGINT', () => {
-    console.log('Saving chat history before exit...');
-    saveChatHistory();
-    process.exit();
-});
-
+// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
-    saveChatHistory();
 });
 
-// Configure Node-Media-Server
-const nmsConfig = {
-    rtmp: {
-        port: 1935,
-        chunk_size: 60000,
-        gop_cache: true,
-        ping: 30,
-        ping_timeout: 60
-    },
-    http: {
-        port: 8000,
-        allow_origin: '*',
-        mediaroot: './media'
-    }
-};
-
-// Create RTMP server instance
-const nms = new NodeMediaServer(nmsConfig);
-nms.run();
-
-// Add stream authentication
-nms.on('prePublish', (id, StreamPath, args) => {
-    let stream_key = StreamPath.split('/')[2];
-    
-    if (stream_key === STREAM_KEY) {
-        isStreaming = true;
-        broadcast({ 
-            type: 'STREAM_STATUS', 
-            status: 'LIVE',
-            viewers: viewerCount 
-        });
-        let session = nms.getSession(id);
-        session.publishSuccess();
-    } else {
-        let session = nms.getSession(id);
-        session.reject();
-    }
-});
-
-nms.on('donePublish', () => {
-    isStreaming = false;
-    broadcast({ 
-        type: 'STREAM_STATUS', 
-        status: 'OFFLINE',
-        viewers: viewerCount 
-    });
-});
-
+// Start the server
 server.listen(3001, () => {
-    console.log('Backend server running on:');
+    console.log('Server running on:');
     console.log('- Web: http://localhost:3001');
-    console.log('- RTMP: rtmp://localhost:1935/live');
-    console.log('- HLS: http://localhost:8000/live');
 });
