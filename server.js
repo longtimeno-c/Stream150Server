@@ -68,11 +68,36 @@ function saveChatHistory() {
 // Initialize
 loadChatHistory();
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript');
+        }
+    }
+}));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'), err => {
+            if (err) {
+                console.error('Error sending index.html:', err);
+                res.status(500).send('Error loading page');
+            }
+        });
+    } catch (err) {
+        console.error('Error in root route:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+app.use((req, res) => {
+    console.log('404 - Not Found:', req.url);
+    res.status(404).send('Not Found');
 });
 
 // WebSocket connection handling
@@ -249,5 +274,8 @@ nms.on('donePublish', () => {
 });
 
 server.listen(3001, () => {
-    console.log('Backend server running on http://localhost:3001');
+    console.log('Backend server running on:');
+    console.log('- Web: http://localhost:3001');
+    console.log('- RTMP: rtmp://localhost:1935/live');
+    console.log('- HLS: http://localhost:8000/live');
 });

@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "express": "^4.17.1",
+    "ws": "^8.2.0",
+    "node-media-server": "^2.3.8",
+    "body-parser": "^1.19.0"
+  }
+} 
