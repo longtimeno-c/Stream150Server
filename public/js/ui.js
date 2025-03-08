@@ -1,23 +1,98 @@
-let hls;
+let hls = null;
+let currentStream = null;
 
 function initializeStream() {
     const video = document.getElementById('videoPlayer');
     
+    // Destroy existing HLS instance if it exists
+    if (hls) {
+        hls.destroy();
+        hls = null;
+    }
+
+    // Clear video source
+    video.src = '';
+    
     if (Hls.isSupported()) {
-        hls = new Hls();
-        hls.loadSource('http://localhost:8000/live/StreamtoME/index.m3u8');
+        hls = new Hls({
+            debug: false,
+            capLevelToPlayerSize: true,
+            autoLevelCapping: -1,
+            startLevel: -1, // Auto quality by default
+            // Add some additional config for better performance
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            manifestLoadingTimeOut: 10000,
+            manifestLoadingMaxRetry: 3,
+            manifestLoadingRetryDelay: 500
+        });
+
+        const streamUrl = `http://${window.location.hostname}:8000/live/StreamtoME/index.m3u8`;
+        currentStream = streamUrl;
+        
+        hls.loadSource(streamUrl);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            video.play();
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+            console.log('Stream manifest loaded, found ' + data.levels.length + ' quality levels');
+            
+            const qualitySelect = document.getElementById('qualitySelect');
+            qualitySelect.innerHTML = '<option value="auto">Auto</option>';
+            
+            // Add available qualities
+            data.levels.forEach((level, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.text = `${level.height}p`;
+                qualitySelect.appendChild(option);
+            });
+            
+            video.play().catch(function(error) {
+                console.log("Play failed:", error);
+            });
+        });
+
+        hls.on(Hls.Events.ERROR, function(event, data) {
+            if (data.fatal) {
+                switch(data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.log('Network error, trying to recover...');
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log('Media error, trying to recover...');
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        console.error('Fatal error:', data);
+                        destroyStream();
+                        break;
+                }
+            }
         });
     }
-    // For browsers with native HLS support (Safari)
+    // For Safari and iOS
     else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = 'http://localhost:8000/live/StreamtoME/index.m3u8';
+        const streamUrl = `http://${window.location.hostname}:8000/live/StreamtoME/index.m3u8`;
+        video.src = streamUrl;
+        currentStream = streamUrl;
+        
         video.addEventListener('loadedmetadata', function() {
-            video.play();
+            video.play().catch(function(error) {
+                console.log("Play failed:", error);
+            });
         });
     }
+}
+
+function destroyStream() {
+    if (hls) {
+        hls.destroy();
+        hls = null;
+    }
+    const video = document.getElementById('videoPlayer');
+    video.src = '';
+    currentStream = null;
 }
 
 function toggleFullscreen() {
@@ -59,7 +134,13 @@ function toggleFullscreen() {
 
 function changeQuality() {
     const quality = document.getElementById('qualitySelect').value;
-    console.log('Quality changed to:', quality);
+    if (hls) {
+        if (quality === 'auto') {
+            hls.currentLevel = -1; // Auto quality
+        } else {
+            hls.currentLevel = parseInt(quality);
+        }
+    }
 }
 
 function toggleChat() {
@@ -88,12 +169,9 @@ function updateStreamStatus(data) {
         videoPlaceholder.style.display = 'none';
         videoPlayer.style.display = 'block';
         videoPlaceholder.pause();
-        initializeStream(); // Initialize the stream when going live
+        initializeStream();
     } else {
-        if (hls) {
-            hls.destroy();
-            hls = null;
-        }
+        destroyStream();
         videoPlaceholder.style.display = 'block';
         videoPlayer.style.display = 'none';
         videoPlaceholder.play();
