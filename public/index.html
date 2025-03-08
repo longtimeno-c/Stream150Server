@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamtoME - Live Streaming</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .video-player {
+            width: 100%;
+            max-width: 800px;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .video-placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background-color: #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 24px;
+        }
+        .status-bar {
+            background-color: #fff;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .live .status-dot {
+            background-color: #ff0000;
+        }
+        .offline .status-dot {
+            background-color: #666;
+        }
+        .viewer-count {
+            color: #666;
+        }
+        .controls {
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="video-player">
+            <div id="videoPlaceholder" class="video-placeholder">
+                Waiting for stream...
+            </div>
+            <div class="status-bar">
+                <div id="status" class="status-indicator offline">
+                    <span class="status-dot"></span>
+                    <span id="statusText">OFFLINE</span>
+                </div>
+                <div class="viewer-count">
+                    <span id="viewerCount">0</span> viewers
+                </div>
+            </div>
+            <div class="controls">
+                <!-- Add player controls here if needed -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:3001');
+        const statusElement = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const viewerCount = document.getElementById('viewerCount');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'STREAM_STATUS') {
+                statusText.textContent = data.status;
+                statusElement.className = 'status-indicator ' + 
+                    (data.status === 'LIVE' ? 'live' : 'offline');
+                videoPlaceholder.textContent = 
+                    data.status === 'LIVE' ? 'Stream is Live!' : 'Waiting for stream...';
+                if (data.viewers !== undefined) {
+                    viewerCount.textContent = data.viewers;
+                }
+            } else if (data.type === 'VIEWER_COUNT') {
+                viewerCount.textContent = data.viewers;
+            }
+        };
+
+        ws.onclose = () => {
+            statusText.textContent = 'DISCONNECTED';
+            statusElement.className = 'status-indicator offline';
+        };
+    </script>
+</body>
+</html>
