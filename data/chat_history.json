@@ -22,5 +22,13 @@
     "message": "Boo",
     "timestamp": "2025-03-08T19:58:03.172Z",
     "id": "1741463883172"
+  },
+  {
+    "type": "CHAT_MESSAGE",
+    "platform": "web",
+    "username": "Tester",
+    "message": "Hallo",
+    "timestamp": "2025-03-08T21:19:44.432Z",
+    "id": "1741468784432"
   }
 ]
