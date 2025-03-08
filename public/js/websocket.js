@@ -1,39 +1,92 @@
 // js/websocket.js
-const isProduction = window.location.hostname === 'watch.stream150.com';
-const wsProtocol = isProduction ? 'wss' : 'ws';
-const host = isProduction ? 'watch.stream150.com' : 'localhost';
-const wsPort = isProduction ? '' : ':3001';
-const wsUrl = `${wsProtocol}://${host}${wsPort}${isProduction ? '/ws' : ''}`;
+let socket = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+const reconnectDelay = 3000;
 
-const socket = new WebSocket(wsUrl);
-
-socket.onopen = () => {
-    console.log('WebSocket connected');
-};
-
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    switch (data.type) {
-        case 'VIEWER_COUNT':
-            updateViewerCount(data.viewers);
-            break;
-        case 'CHAT_MESSAGE':
-            // Handle chat messages (implemented elsewhere)
-            break;
-        case 'CHAT_HISTORY':
-            // Handle chat history
-            break;
-    }
-};
-
-socket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-};
-
-socket.onclose = () => {
-    console.log('WebSocket closed');
-};
+function initializeWebSocket() {
+    // Determine WebSocket URL based on current environment
+    const isProduction = window.location.hostname === 'watch.stream150.com';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host = window.location.host;
+    const wsUrl = isProduction ? `${wsProtocol}://${host}/ws` : `ws://localhost:3001`;
+    
+    console.log('Connecting to WebSocket:', wsUrl);
+    
+    // Create WebSocket connection
+    socket = new WebSocket(wsUrl);
+    window.socket = socket; // Make it globally available
+    
+    socket.onopen = function() {
+        console.log('WebSocket connection established');
+        reconnectAttempts = 0;
+        
+        // Update UI to show connected state
+        document.querySelectorAll('.chat-status').forEach(el => {
+            el.classList.add('connected');
+            el.classList.remove('disconnected');
+        });
+    };
+    
+    socket.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            console.log('Received WebSocket message:', data);
+            
+            // Dispatch custom event for other modules to listen to
+            const wsEvent = new CustomEvent('ws-message', { detail: data });
+            document.dispatchEvent(wsEvent);
+            
+            // Handle specific message types directly
+            switch(data.type) {
+                case 'VIEWER_COUNT':
+                    updateViewerCount(data.viewers);
+                    break;
+                case 'STREAM_STATUS':
+                    handleStreamStatusUpdate(data.status);
+                    break;
+            }
+        } catch (error) {
+            console.error('Error processing WebSocket message:', error);
+        }
+    };
+    
+    socket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+        
+        // Update UI to show error state
+        document.querySelectorAll('.chat-status').forEach(el => {
+            el.classList.add('disconnected');
+            el.classList.remove('connected');
+        });
+    };
+    
+    socket.onclose = function() {
+        console.log('WebSocket connection closed');
+        
+        // Update UI to show disconnected state
+        document.querySelectorAll('.chat-status').forEach(el => {
+            el.classList.add('disconnected');
+            el.classList.remove('connected');
+        });
+        
+        // Attempt to reconnect
+        if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+            setTimeout(initializeWebSocket, reconnectDelay);
+        } else {
+            console.error('Maximum reconnection attempts reached');
+        }
+    };
+}
 
 function updateViewerCount(count) {
-    document.getElementById('viewerCount').textContent = count;
+    const viewerCountElement = document.getElementById('viewerCount');
+    if (viewerCountElement) {
+        viewerCountElement.textContent = count;
+    }
 }
+
+// Initialize WebSocket when the page loads
+document.addEventListener('DOMContentLoaded', initializeWebSocket);
