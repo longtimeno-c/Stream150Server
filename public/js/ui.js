@@ -106,4 +106,33 @@ document.addEventListener('DOMContentLoaded', () => {
     createMilestoneMarkers();
     setInterval(updateDonationUI, 30000);
     updateDonationUI();
+
+    // Mobile chat toggle
+    const chatToggle = document.querySelector('.chat-toggle');
+    const mobileChat = document.querySelector('.mobile-chat-overlay');
+    const closeChatBtn = document.querySelector('.close-chat-btn');
+    
+    if (chatToggle) {
+        chatToggle.addEventListener('click', () => {
+            mobileChat.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        });
+    }
+    
+    if (closeChatBtn) {
+        closeChatBtn.addEventListener('click', () => {
+            mobileChat.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+    }
+    
+    // Handle chat input focus
+    const chatInputs = document.querySelectorAll('.chat-input');
+    chatInputs.forEach(input => {
+        input.addEventListener('focus', () => {
+            if (!currentUser) {
+                promptUsername();
+            }
+        });
+    });
 }); 

@@ -4,6 +4,8 @@ const WebSocket = require('ws');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const { setupWebSocket } = require('./websocket');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -11,7 +13,6 @@ const MAX_CHAT_HISTORY = 1000; // Increased for better continuity
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 
 let isStreaming = false;
 let viewerCount = 0;
@@ -74,93 +75,8 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// WebSocket connection handling
-wss.on('connection', (ws) => {
-    viewerCount++;
-    
-    // Send initial status
-    ws.send(JSON.stringify({ 
-        type: 'STREAM_STATUS', 
-        status: isStreaming ? 'LIVE' : 'OFFLINE',
-        viewers: viewerCount 
-    }));
-
-    // Send chat history as a single batch
-    ws.send(JSON.stringify({
-        type: 'CHAT_HISTORY',
-        messages: chatHistory
-    }));
-
-    // Add a ping interval to keep connection alive
-    const pingInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.ping();
-        }
-    }, 30000);
-
-    ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message);
-            if (data.type === 'CHAT_MESSAGE') {
-                const chatMessage = {
-                    type: 'CHAT_MESSAGE',
-                    platform: data.platform || 'web',
-                    message: data.message,
-                    username: data.username || 'Anonymous',
-                    timestamp: new Date().toISOString(),
-                    id: Date.now().toString()
-                };
-                
-                // Add to chat history
-                chatHistory.push(chatMessage);
-                
-                // Maintain maximum history size
-                if (chatHistory.length > MAX_CHAT_HISTORY) {
-                    chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
-                }
-                
-                // Save immediately after each message
-                saveChatHistory();
-                
-                // Broadcast to ALL clients INCLUDING sender
-                broadcast(chatMessage);
-            }
-        } catch (err) {
-            console.error('Error processing message:', err);
-        }
-    });
-
-    ws.on('close', () => {
-        clearInterval(pingInterval);
-        viewerCount--;
-        broadcast({ 
-            type: 'VIEWER_COUNT', 
-            viewers: viewerCount 
-        });
-    });
-
-    ws.on('error', (error) => {
-        clearInterval(pingInterval);
-        console.error('WebSocket error:', error);
-    });
-});
-
-// Update broadcast function to be more robust
-function broadcast(data) {
-    const message = JSON.stringify(data);
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            try {
-                client.send(message);
-            } catch (err) {
-                console.error('Error broadcasting message:', err);
-            }
-        }
-    });
-}
-
-// Save chat history more frequently (every minute)
-setInterval(saveChatHistory, 60 * 1000);
+// Set up WebSocket
+setupWebSocket(server);
 
 app.post('/authenticate', (req, res) => {
     const { name } = req.body;
@@ -199,6 +115,7 @@ process.on('uncaughtException', (err) => {
     saveChatHistory();
 });
 
-server.listen(3001, () => {
-    console.log('Backend server running on http://localhost:3001');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });

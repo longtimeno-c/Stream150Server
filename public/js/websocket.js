@@ -1,30 +1,75 @@
-const ws = new WebSocket('ws://localhost:3001');
+let ws = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
 
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
+function initializeWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
     
-    if (data.type === 'STREAM_STATUS') {
-        updateStreamStatus(data);
-    } else if (data.type === 'VIEWER_COUNT') {
-        updateViewerCount(data.viewers);
-    } else if (data.type === 'CHAT_HISTORY') {
-        loadChatHistory(data.messages);
-    } else if (data.type === 'CHAT_MESSAGE') {
-        handleNewChatMessage(data);
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+        console.log('WebSocket connected');
+        reconnectAttempts = 0;
+        updateConnectionStatus(true);
+    };
+    
+    ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        updateConnectionStatus(false);
+        
+        if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            setTimeout(initializeWebSocket, 3000 * reconnectAttempts);
+        }
+    };
+    
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+    
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            
+            switch (data.type) {
+                case 'CHAT_MESSAGE':
+                case 'CHAT_HISTORY':
+                    handleNewChatMessage(data);
+                    break;
+                case 'VIEWER_COUNT':
+                    updateViewerCount(data.count);
+                    break;
+                default:
+                    console.log('Unknown message type:', data.type);
+            }
+        } catch (error) {
+            console.error('Error processing message:', error);
+        }
+    };
+}
+
+function updateConnectionStatus(connected) {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.status-indicator span');
+    
+    if (connected) {
+        statusDot.style.backgroundColor = '#ff4444';
+        statusDot.style.boxShadow = '0 0 6px #ff4444';
+        statusText.textContent = 'LIVE';
+    } else {
+        statusDot.style.backgroundColor = '#666';
+        statusDot.style.boxShadow = 'none';
+        statusText.textContent = 'OFFLINE';
     }
-};
+}
 
-ws.onopen = () => {
-    console.log('Connected to chat server');
-};
+function updateViewerCount(count) {
+    const viewerCountElements = document.querySelectorAll('.viewer-count');
+    viewerCountElements.forEach(element => {
+        element.textContent = `${count} ${count === 1 ? 'viewer' : 'viewers'}`;
+    });
+}
 
-ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
-};
-
-ws.onclose = () => {
-    console.log('Disconnected from chat server');
-    setTimeout(() => {
-        window.location.reload();
-    }, 5000);
-}; 
+// Initialize WebSocket when the page loads
+document.addEventListener('DOMContentLoaded', initializeWebSocket); 
