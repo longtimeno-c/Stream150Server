@@ -12,6 +12,8 @@ const wss = new WebSocket.Server({ server });
 
 let isStreaming = false;
 let viewerCount = 0;
+let chatHistory = [];
+const MAX_CHAT_HISTORY = 100;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -43,14 +45,29 @@ wss.on('connection', (ws) => {
         viewers: viewerCount 
     }));
 
+    // Send chat history to new connections
+    chatHistory.forEach(chatMsg => {
+        ws.send(JSON.stringify(chatMsg));
+    });
+
     ws.on('message', (message) => {
         const data = JSON.parse(message);
         if (data.type === 'CHAT_MESSAGE') {
-            broadcast({
+            // Add username if provided
+            const chatMessage = {
                 type: 'CHAT_MESSAGE',
-                platform: data.platform,
-                message: data.message
-            });
+                platform: data.platform || 'web',
+                message: data.message,
+                username: data.username || 'Anonymous'
+            };
+            
+            // Store in chat history
+            chatHistory.push(chatMessage);
+            if (chatHistory.length > MAX_CHAT_HISTORY) {
+                chatHistory = chatHistory.slice(chatHistory.length - MAX_CHAT_HISTORY);
+            }
+            
+            broadcast(chatMessage);
         }
     });
 

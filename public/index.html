@@ -287,6 +287,45 @@
             animation: fadeIn 0.3s ease;
         }
 
+        .chat-message.twitch {
+            border-left: 3px solid #9146FF;
+            background-color: rgba(145, 70, 255, 0.1);
+        }
+
+        .chat-message.youtube {
+            border-left: 3px solid #FF0000;
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+
+        .chat-message.web {
+            border-left: 3px solid #1E90FF;
+            background-color: rgba(30, 144, 255, 0.1);
+        }
+
+        .platform-indicator {
+            display: inline-block;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            margin-right: 5px;
+            font-weight: bold;
+        }
+
+        .platform-indicator.twitch {
+            background-color: #9146FF;
+            color: white;
+        }
+
+        .platform-indicator.youtube {
+            background-color: #FF0000;
+            color: white;
+        }
+
+        .platform-indicator.web {
+            background-color: #1E90FF;
+            color: white;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
@@ -479,6 +518,50 @@
         const mobileChatInput = document.getElementById('mobileChatInput');
         const mobileChatOverlay = document.getElementById('mobileChatOverlay');
 
+        // Chat history storage
+        const CHAT_HISTORY_KEY = 'stream150_chat_history';
+        const MAX_CHAT_HISTORY = 100;
+        let chatHistory = [];
+
+        // Load chat history from localStorage
+        function loadChatHistory() {
+            const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
+            if (savedHistory) {
+                try {
+                    chatHistory = JSON.parse(savedHistory);
+                    // Display loaded chat history
+                    chatHistory.forEach(item => {
+                        displayChatMessage(item.message, item.platform, item.username);
+                    });
+                } catch (e) {
+                    console.error('Error loading chat history:', e);
+                    chatHistory = [];
+                }
+            }
+        }
+
+        // Save chat history to localStorage
+        function saveChatHistory() {
+            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+        }
+
+        // Add message to chat history
+        function addToChatHistory(message, platform, username) {
+            chatHistory.push({
+                message,
+                platform,
+                username,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Keep only the most recent MAX_CHAT_HISTORY messages
+            if (chatHistory.length > MAX_CHAT_HISTORY) {
+                chatHistory = chatHistory.slice(chatHistory.length - MAX_CHAT_HISTORY);
+            }
+            
+            saveChatHistory();
+        }
+
         // Donation tracker variables
         const paypalPoolUrl = 'https://www.paypal.com/pool/9c2agpViJU?sr=ancr';
         const totalGoal = 1000;
@@ -505,13 +588,46 @@
             } else if (data.type === 'VIEWER_COUNT') {
                 viewerCount.textContent = data.viewers;
             } else if (data.type === 'CHAT_MESSAGE') {
-                addChatMessage(data.message, data.platform, data.username || 'Anonymous');
+                // Extract username from message if it's from Twitch or YouTube
+                let username = 'Anonymous';
+                let message = data.message;
+                let platform = data.platform || 'web';
+                
+                // Parse platform-specific messages
+                if (message.includes('Twitch | ')) {
+                    const parts = message.split(': ');
+                    const userPart = parts[0].replace('Twitch | ', '');
+                    username = userPart;
+                    message = parts.slice(1).join(': ');
+                    platform = 'twitch';
+                } else if (message.includes('YouTube | ')) {
+                    const parts = message.split(': ');
+                    const userPart = parts[0].replace('YouTube | ', '');
+                    username = userPart;
+                    message = parts.slice(1).join(': ');
+                    platform = 'youtube';
+                }
+                
+                addChatMessage(message, platform, username);
             }
         };
 
         function addChatMessage(message, platform, username) {
+            // Add to chat history
+            addToChatHistory(message, platform, username);
+            
+            // Display the message
+            displayChatMessage(message, platform, username);
+        }
+        
+        function displayChatMessage(message, platform, username) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${platform}`;
+            
+            // Add platform indicator
+            const platformIndicator = document.createElement('span');
+            platformIndicator.className = `platform-indicator ${platform}`;
+            platformIndicator.textContent = platform.charAt(0).toUpperCase() + platform.slice(1);
             
             const usernameSpan = document.createElement('span');
             usernameSpan.className = 'chat-username';
@@ -522,6 +638,7 @@
             messageSpan.className = 'chat-text';
             messageSpan.textContent = message;
             
+            messageDiv.appendChild(platformIndicator);
             messageDiv.appendChild(usernameSpan);
             messageDiv.appendChild(messageSpan);
             
@@ -574,7 +691,9 @@
             if (message) {
                 ws.send(JSON.stringify({
                     type: 'CHAT_MESSAGE',
-                    message: message
+                    platform: 'web',
+                    message: message,
+                    username: 'Viewer' // You could implement a username system here
                 }));
                 chatInput.value = '';
             }
@@ -585,7 +704,9 @@
             if (message) {
                 ws.send(JSON.stringify({
                     type: 'CHAT_MESSAGE',
-                    message: message
+                    platform: 'web',
+                    message: message,
+                    username: 'Viewer' // You could implement a username system here
                 }));
                 mobileChatInput.value = '';
             }
@@ -672,6 +793,9 @@
         mobileChatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMobileChat();
         });
+        
+        // Load chat history when page loads
+        loadChatHistory();
         
         createMilestoneMarkers();
         setInterval(updateDonationUI, 30000);
