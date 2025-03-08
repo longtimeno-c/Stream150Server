@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
+const EventEmitter = require('events')
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -249,12 +250,26 @@ const nmsConfig = {
 
 // Create RTMP server instance
 const nms = new NodeMediaServer(nmsConfig);
-nms.run();
 
-// Add stream authentication
+// Extend nms with EventEmitter if needed (fallback)
+if (typeof nms.on !== 'function') {
+    Object.setPrototypeOf(nms, EventEmitter.prototype);
+    EventEmitter.call(nms);
+}
+
+console.log('NMS instance before run:', nms);
+
+// Start the server
+nms.httpServer.run();
+nms.rtmpServer.run();
+console.log('NMS started (HTTP and RTMP servers running)');
+
+// Attach event listeners AFTER running the server
 nms.on('prePublish', (id, StreamPath, args) => {
+    //console.log(`[NodeEvent on prePublish] id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
     let stream_key = StreamPath.split('/')[2];
-    
+    let session = nms.getSession(id);
+
     if (stream_key === STREAM_KEY) {
         isStreaming = true;
         broadcast({ 
@@ -262,15 +277,15 @@ nms.on('prePublish', (id, StreamPath, args) => {
             status: 'LIVE',
             viewers: viewerCount 
         });
-        let session = nms.getSession(id);
-        session.publishSuccess();
+        session.publishSuccess(); // Allow the stream to proceed
     } else {
-        let session = nms.getSession(id);
-        session.reject();
+        session.reject(); // Reject unauthorized streams
+        console.log(`Rejected stream with key: ${stream_key}`);
     }
 });
 
-nms.on('donePublish', () => {
+nms.on('donePublish', (id, StreamPath, args) => {
+    //console.log(`[NodeEvent on donePublish] id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
     isStreaming = false;
     broadcast({ 
         type: 'STREAM_STATUS', 
