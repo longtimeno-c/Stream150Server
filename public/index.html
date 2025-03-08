@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stream150 - Live</title>
+    <title>StreamtoME - Live Streaming</title>
     <style>
         * {
             margin: 0;
@@ -231,9 +231,74 @@
         </div>
     </div>
 
-    <!-- JavaScript remains the same -->
     <script>
-        // ... (keeping your original JavaScript code)
+        const ws = new WebSocket('ws://localhost:3001');
+        const statusElement = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const viewerCount = document.getElementById('viewerCount');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const chatBox = document.getElementById('chatBox');
+        const chatInput = document.getElementById('chatInput');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'STREAM_STATUS') {
+                statusText.textContent = data.status;
+                statusElement.className = 'status-indicator ' + 
+                    (data.status === 'LIVE' ? 'live' : 'offline');
+                videoPlaceholder.textContent = 
+                    data.status === 'LIVE' ? 'Stream is Live!' : 'Waiting for stream...';
+                if (data.viewers !== undefined) {
+                    viewerCount.textContent = data.viewers;
+                }
+            } else if (data.type === 'VIEWER_COUNT') {
+                viewerCount.textContent = data.viewers;
+            } else if (data.type === 'CHAT_MESSAGE') {
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = data.message;
+                chatBox.appendChild(messageDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        };
+
+        ws.onclose = () => {
+            statusText.textContent = 'DISCONNECTED';
+            statusElement.className = 'status-indicator offline';
+        };
+
+        function toggleFullscreen() {
+            const player = document.querySelector('.video-player');
+            if (!document.fullscreenElement) {
+                player.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function changeQuality() {
+            const quality = document.getElementById('qualitySelect').value;
+            // Add your quality change logic here
+            console.log('Quality changed to:', quality);
+        }
+
+        function sendChat() {
+            const message = chatInput.value.trim();
+            if (message) {
+                ws.send(JSON.stringify({
+                    type: 'CHAT_MESSAGE',
+                    message: message
+                }));
+                chatInput.value = '';
+            }
+        }
+
+        // Press Enter to send chat
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChat();
+            }
+        });
     </script>
 </body>
 </html>
