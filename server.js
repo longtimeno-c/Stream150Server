@@ -73,6 +73,13 @@ wss.on('connection', (ws) => {
         messages: chatHistory
     }));
 
+    // Add a ping interval to keep connection alive
+    const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.ping();
+        }
+    }, 30000);
+
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
@@ -83,7 +90,7 @@ wss.on('connection', (ws) => {
                     message: data.message,
                     username: data.username || 'Anonymous',
                     timestamp: new Date().toISOString(),
-                    id: Date.now().toString() // Add unique ID for message tracking
+                    id: Date.now().toString()
                 };
                 
                 // Add to chat history
@@ -94,10 +101,14 @@ wss.on('connection', (ws) => {
                     chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
                 }
                 
-                // Broadcast to all clients
-                broadcast(chatMessage);
+                // Broadcast to ALL clients EXCEPT sender
+                wss.clients.forEach((client) => {
+                    if (client !== ws && client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify(chatMessage));
+                    }
+                });
                 
-                // Save periodically (every 10 messages)
+                // Save periodically
                 if (chatHistory.length % 10 === 0) {
                     saveChatHistory();
                 }
@@ -108,6 +119,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
+        clearInterval(pingInterval);
         viewerCount--;
         broadcast({ 
             type: 'VIEWER_COUNT', 
@@ -115,17 +127,19 @@ wss.on('connection', (ws) => {
         });
     });
 
-    // Handle errors
     ws.on('error', (error) => {
+        clearInterval(pingInterval);
         console.error('WebSocket error:', error);
     });
 });
 
+// Update broadcast function to be more robust
 function broadcast(data) {
+    const message = JSON.stringify(data);
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             try {
-                client.send(JSON.stringify(data));
+                client.send(message);
             } catch (err) {
                 console.error('Error broadcasting message:', err);
             }

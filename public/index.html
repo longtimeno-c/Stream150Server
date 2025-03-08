@@ -697,9 +697,20 @@
             return colors[Math.abs(hash) % colors.length];
         }
 
+        ws.onopen = () => {
+            console.log('Connected to chat server');
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
         ws.onclose = () => {
-            statusText.textContent = 'DISCONNECTED';
-            statusElement.className = 'status-indicator offline';
+            console.log('Disconnected from chat server');
+            // Optionally, you could try to reconnect here
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
         };
 
         function toggleFullscreen() {
@@ -723,7 +734,7 @@
                     type: 'CHAT_MESSAGE',
                     platform: 'web',
                     message: message,
-                    username: 'Viewer' // You could implement a username system here
+                    username: 'Viewer'
                 };
                 
                 ws.send(JSON.stringify(chatMessage));
@@ -741,7 +752,7 @@
                     type: 'CHAT_MESSAGE',
                     platform: 'web',
                     message: message,
-                    username: 'Viewer' // You could implement a username system here
+                    username: 'Viewer'
                 };
                 
                 ws.send(JSON.stringify(chatMessage));
