@@ -549,48 +549,46 @@
         const mobileChatInput = document.getElementById('mobileChatInput');
         const mobileChatOverlay = document.getElementById('mobileChatOverlay');
 
-        // Chat history storage
-        const CHAT_HISTORY_KEY = 'stream150_chat_history';
-        const MAX_CHAT_HISTORY = 100;
+        // Chat history handling - remove localStorage functions since server handles persistence
         let chatHistory = [];
 
-        // Load chat history from localStorage
-        function loadChatHistory() {
-            const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
-            if (savedHistory) {
-                try {
-                    chatHistory = JSON.parse(savedHistory);
-                    // Display loaded chat history
-                    chatHistory.forEach(item => {
-                        displayChatMessage(item.message, item.platform, item.username);
-                    });
-                } catch (e) {
-                    console.error('Error loading chat history:', e);
-                    chatHistory = [];
-                }
-            }
-        }
-
-        // Save chat history to localStorage
-        function saveChatHistory() {
-            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
-        }
-
-        // Add message to chat history
-        function addToChatHistory(message, platform, username) {
-            chatHistory.push({
-                message,
-                platform,
-                username,
-                timestamp: new Date().toISOString()
-            });
+        function displayChatMessage(message, platform, username) {
+            // Create and display the message in chat
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${platform}`;
             
-            // Keep only the most recent MAX_CHAT_HISTORY messages
-            if (chatHistory.length > MAX_CHAT_HISTORY) {
-                chatHistory = chatHistory.slice(chatHistory.length - MAX_CHAT_HISTORY);
+            const platformIndicator = document.createElement('span');
+            platformIndicator.className = `platform-indicator ${platform}`;
+            platformIndicator.textContent = platform.charAt(0).toUpperCase() + platform.slice(1);
+            
+            const usernameSpan = document.createElement('span');
+            usernameSpan.className = 'chat-username';
+            usernameSpan.textContent = username;
+            usernameSpan.style.color = getColorFromUsername(username);
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.className = 'chat-text';
+            messageSpan.textContent = `: ${message}`;
+            
+            messageDiv.appendChild(platformIndicator);
+            messageDiv.appendChild(usernameSpan);
+            messageDiv.appendChild(messageSpan);
+            
+            // Add to both chat boxes
+            chatBox.appendChild(messageDiv.cloneNode(true));
+            mobileChatBox.appendChild(messageDiv);
+            
+            // Keep only last 200 messages in DOM
+            while (chatBox.children.length > 200) {
+                chatBox.removeChild(chatBox.firstChild);
+                mobileChatBox.removeChild(mobileChatBox.firstChild);
             }
             
-            saveChatHistory();
+            // Scroll to bottom if auto-scroll is enabled
+            if (autoScroll) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+                mobileChatBox.scrollTop = mobileChatBox.scrollHeight;
+            }
         }
 
         // Donation tracker variables
@@ -668,7 +666,7 @@
             chatBox.appendChild(messageDiv.cloneNode(true));
             mobileChatBox.appendChild(messageDiv);
             
-            // Keep only last 200 messages in DOM to prevent performance issues
+            // Keep only last 200 messages in DOM
             while (chatBox.children.length > 200) {
                 chatBox.removeChild(chatBox.firstChild);
                 mobileChatBox.removeChild(mobileChatBox.firstChild);
@@ -873,9 +871,6 @@
             mobileChatInput.focus();
         });
 
-        // Load chat history when page loads
-        loadChatHistory();
-        
         createMilestoneMarkers();
         setInterval(updateDonationUI, 30000);
         updateDonationUI();
