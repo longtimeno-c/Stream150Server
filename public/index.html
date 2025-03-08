@@ -56,9 +56,9 @@
         <div class="chat-container">
             <div class="chat-header">
                 <h3>Live Chat</h3>
-                <span class="chat-status"></span>
+                <span class="viewer-count">0 viewers</span>
             </div>
-            <div id="chatBox" class="chat-box"></div>
+            <div id="chat-box" class="chat-box"></div>
             <div class="chat-input-container">
                 <input type="text" id="chatInput" class="chat-input" placeholder="Send a message...">
                 <button class="chat-send-btn" onclick="sendChat()">Send</button>
@@ -80,12 +80,12 @@
     <div class="mobile-chat-overlay" id="mobileChatOverlay" style="display: none;">
         <div class="mobile-chat-header">
             <h3>Live Chat</h3>
-            <button class="close-chat-btn" onclick="toggleChat()">×</button>
+            <button class="close-chat-btn">&times;</button>
         </div>
-        <div id="mobileChatBox" class="chat-box"></div>
+        <div id="mobile-chat-box" class="chat-box"></div>
         <div class="chat-input-container">
-            <input type="text" id="mobileChatInput" class="chat-input" placeholder="Send a message...">
-            <button class="chat-send-btn" onclick="sendMobileChat()">Send</button>
+            <input type="text" id="mobile-chat-input" class="chat-input" placeholder="Send a message...">
+            <button onclick="sendChat(mobileChatInput)" class="chat-send-btn">Send</button>
         </div>
     </div>
 

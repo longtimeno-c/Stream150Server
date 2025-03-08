@@ -307,10 +307,10 @@ body {
 }
 
 .chat-message {
-    padding: 6px 8px;
-    margin-bottom: 6px;
-    border-radius: 4px;
-    animation: fadeIn 0.3s ease;
+    padding: 4px 8px;
+    margin: 2px 0;
+    word-wrap: break-word;
+    animation: fadeIn 0.2s ease-in;
 }
 
 .chat-message.twitch {
@@ -328,13 +328,22 @@ body {
     background-color: rgba(30, 144, 255, 0.1);
 }
 
+.chat-timestamp {
+    color: #999;
+    font-size: 0.8em;
+    margin-right: 8px;
+}
+
 .platform-indicator {
-    display: inline-block;
-    padding: 2px 5px;
+    padding: 2px 4px;
     border-radius: 3px;
-    font-size: 0.7rem;
-    margin-right: 5px;
-    font-weight: bold;
+    margin-right: 8px;
+    font-size: 0.8em;
+}
+
+.platform-indicator.web {
+    background-color: #2196F3;
+    color: white;
 }
 
 .platform-indicator.twitch {
@@ -342,28 +351,13 @@ body {
     color: white;
 }
 
-.platform-indicator.youtube {
-    background-color: #FF0000;
-    color: white;
-}
-
-.platform-indicator.web {
-    background-color: #1E90FF;
-    color: white;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
 .chat-username {
     font-weight: bold;
-    margin-right: 5px;
+    margin-right: 4px;
 }
 
 .chat-text {
-    word-break: break-word;
+    color: #333;
 }
 
 .mobile-chat-overlay {
