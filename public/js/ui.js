@@ -65,10 +65,11 @@ function updateStreamStatus(data) {
     if (data.status === 'LIVE') {
         videoPlaceholder.style.display = 'none';
         videoPlayer.style.display = 'block';
+        videoPlaceholder.pause(); // Pause the logo video
     } else {
-        videoPlaceholder.style.display = 'flex';
+        videoPlaceholder.style.display = 'block';
         videoPlayer.style.display = 'none';
-        videoPlaceholder.textContent = 'Waiting for stream...';
+        videoPlaceholder.play(); // Resume playing the logo video
     }
 }
 
