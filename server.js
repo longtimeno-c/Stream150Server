@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 const STREAM_KEY = 'StreamtoME';
-const CHAT_HISTORY_FILE = path.join(__dirname, 'chat_history.json');
+const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
 const MAX_CHAT_HISTORY = 1000; // Increased for better continuity
 
 const app = express();
@@ -20,9 +20,15 @@ let chatHistory = [];
 // Load chat history from file
 function loadChatHistory() {
     try {
+        // Ensure data directory exists
+        const dir = path.dirname(CHAT_HISTORY_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
         if (fs.existsSync(CHAT_HISTORY_FILE)) {
             const data = fs.readFileSync(CHAT_HISTORY_FILE, 'utf8');
-            chatHistory = JSON.parse(data || '[]'); // Handle empty file case
+            chatHistory = JSON.parse(data || '[]');
             console.log(`Loaded ${chatHistory.length} messages from chat history`);
             
             // Clean up old messages if exceeding max
@@ -45,13 +51,12 @@ function loadChatHistory() {
 // Save chat history to file
 function saveChatHistory() {
     try {
-        // Ensure directory exists
+        // Ensure data directory exists
         const dir = path.dirname(CHAT_HISTORY_FILE);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
         
-        // Save the chat history
         fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(chatHistory, null, 2));
         console.log(`Saved ${chatHistory.length} messages to chat history`);
     } catch (err) {
