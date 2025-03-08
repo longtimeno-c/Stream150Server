@@ -36,6 +36,7 @@ body {
     width: 100%;
     position: relative;
     aspect-ratio: 16/9;
+    margin-bottom: 40px;
 }
 
 .video-player {
@@ -170,9 +171,12 @@ body {
 }
 
 .donation-tracker {
-    padding: 10px;
-    background: #2d2d2d;
+    position: relative;
+    width: 100%;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
+    margin-top: 20px;
 }
 
 .donation-tracker h2 {
@@ -188,26 +192,20 @@ body {
 }
 
 #progress-container {
-    position: relative;
     width: 100%;
-    height: clamp(20px, 6vw, 40px);
-    background-color: #333;
-    border-radius: 8px;
-    margin: clamp(10px, 3vw, 20px) 0;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 10px;
 }
 
 #progress-bar {
     height: 100%;
-    width: 0;
-    background-color: #4caf50;
-    border-radius: 8px;
-    text-align: right;
-    line-height: clamp(20px, 6vw, 40px);
-    padding-right: 0.4rem;
-    box-sizing: border-box;
+    background-color: #4CAF50;
+    text-align: center;
+    line-height: 20px;
     color: white;
-    font-weight: bold;
-    font-size: clamp(0.7rem, 2.5vw, 1rem);
     transition: width 0.5s ease-in-out;
 }
 
@@ -489,5 +487,10 @@ body {
 
     .fullscreen-btn:hover {
         background: rgba(255, 255, 255, 1);
+    }
+
+    .donation-tracker {
+        margin: 10px;
+        width: calc(100% - 20px);
     }
 }
