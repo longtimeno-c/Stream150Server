@@ -13,7 +13,6 @@ const MAX_CHAT_HISTORY = 100;
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 
 let isStreaming = false;
 let viewerCount = 0;
