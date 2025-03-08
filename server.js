@@ -76,7 +76,7 @@ app.get('/', (req, res) => {
 });
 
 // Set up WebSocket
-setupWebSocket(server);
+const wss = setupWebSocket(server);
 
 app.post('/authenticate', (req, res) => {
     const { name } = req.body;
@@ -115,7 +115,30 @@ process.on('uncaughtException', (err) => {
     saveChatHistory();
 });
 
+// Add broadcast function that was referenced but missing
+function broadcast(message) {
+    if (!wss) return;
+    
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(message));
+        }
+    });
+}
+
+// Add error handling for the server
+server.on('error', (error) => {
+    console.error('Server error:', error);
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+}).on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+    } else {
+        console.error('Error starting server:', error);
+    }
+    process.exit(1);
 });
