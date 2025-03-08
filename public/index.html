@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Stream150 - Live</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="shortcut icon" href="150logo.ico" type="image/x-icon">
+    <link rel="icon" href="150logo.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
+
 <body>
     <div class="header">
         <h1>Stream150</h1>
@@ -13,9 +20,10 @@
     <div class="main-container">
         <div class="video-container">
             <div class="video-player">
-                <div id="videoPlaceholder" class="video-placeholder">
-                    Waiting for stream...
-                </div>
+                <video id="videoPlayer" class="video-element" playsinline controls>
+                    <source src="" type="application/x-mpegURL">
+                    Your browser does not support the video element.
+                </video>
                 <div class="status-bar">
                     <div id="status" class="status-indicator offline">
                         <span class="status-dot"></span>
@@ -26,70 +34,378 @@
                     </div>
                 </div>
                 <div class="controls">
+                    <button class="live-btn" onclick="jumpToLive()" title="Jump to Live">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12" y2="16"></line>
+                        </svg>
+                        <span>LIVE</span>
+                    </button>
                     <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Full Screen">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#212121" stroke-width="2">
-                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m-6 18v-3m0-12V3m-9 18h3M3 8v8a2 2 0 0 0 2 2h3m10-2h3a2 2 0 0 0 2-2v-3"/>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
                         </svg>
                     </button>
-                    <select id="qualitySelect" onchange="changeQuality()">
-                        <option value="720p">720p</option>
-                        <option value="1080p">1080p</option>
+                    <select id="qualitySelect" class="quality-select">
+                        <option value="auto">Auto</option>
                     </select>
-                </div>
-                <div class="donation-buttons">
-                    <button class="tangia-btn" onclick="window.open('https://tangia.co/westboys1912')">
-                        <img src="https://cdn-icons-png.flaticon.com/512/888/888879.png" alt="Tangia Logo" class="btn-logo">
-                        Tangia
-                    </button>
-                    <button class="paypal-btn" onclick="window.open('https://www.paypal.com/pool/9c2agpViJU?sr=ancr')">
-                        <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" alt="PayPal Logo" class="btn-logo">
-                        PayPal
-                    </button>
-                </div>
-                <div class="donation-tracker">
-                    <h2>Stream Donation Progress</h2>
-                    <p id="current-donations">Loading donations...</p>
-                    <div id="progress-container">
-                        <div id="progress-bar">0%</div>
-                    </div>
                 </div>
             </div>
         </div>
         <div class="chat-container">
             <div class="chat-header">
                 <h3>Live Chat</h3>
-                <span class="viewer-count">0 viewers</span>
+                <span class="chat-status"></span>
             </div>
-            <div id="chat-box" class="chat-box"></div>
+            <div id="chatBox" class="chat-box"></div>
             <div class="chat-input-container">
-                <input type="text" id="chat-input" class="chat-input" placeholder="Send a message...">
-                <button onclick="sendChat()" class="chat-send-btn">Send</button>
+                <input type="text" id="chatInput" class="chat-input" placeholder="Send a message...">
+                <button class="chat-send-btn" onclick="sendChat()">Send</button>
+            </div>
+            <div id="countdown" class="below-chat-countdown"></div>
+            <div class="chat-debug-controls" style="margin-top: 10px; text-align: right; font-size: 12px;">
+                <button onclick="debugChatHistory()" class="debug-btn">Debug Chat</button>
             </div>
         </div>
     </div>
 
-    <button class="chat-toggle" onclick="toggleChat()">
+    <button class="chat-toggle" onclick="toggleChat()" style="display: none;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
         Chat
     </button>
 
-    <div class="mobile-chat-overlay">
+    <div class="mobile-chat-overlay" id="mobileChatOverlay" style="display: none;">
         <div class="mobile-chat-header">
             <h3>Live Chat</h3>
-            <button class="close-chat-btn">&times;</button>
+            <button class="close-chat-btn" onclick="toggleChat()">×</button>
         </div>
-        <div id="mobile-chat-box" class="chat-box"></div>
+        <div id="mobileChatBox" class="chat-box"></div>
         <div class="chat-input-container">
-            <input type="text" id="mobile-chat-input" class="chat-input" placeholder="Send a message...">
-            <button onclick="sendChat(mobileChatInput)" class="chat-send-btn">Send</button>
+            <input type="text" id="mobileChatInput" class="chat-input" placeholder="Send a message...">
+            <button class="chat-send-btn" onclick="sendMobileChat()">Send</button>
         </div>
     </div>
 
-    <script src="js/websocket-browser.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const video = document.getElementById('videoPlayer');
+            const isProduction = window.location.hostname === 'watch.stream150.com';
+            const protocol = isProduction ? 'https' : 'http';
+            const wsProtocol = isProduction ? 'wss' : 'ws';
+            const host = window.location.host;  // This will include the port if any
+            const baseUrl = isProduction ? '' : `${protocol}://${host}`;
+            
+            // Configure stream URL (through Caddy's reverse proxy)
+            const hlsUrl = isProduction 
+                ? '/live/StreamtoME/index.m3u8'  // Update this path
+                : `${protocol}://localhost:8000/live/StreamtoME/index.m3u8`;  // This is correct
+            
+            // WebSocket URL (through Caddy's reverse proxy)
+            window.WS_URL = isProduction
+                ? `${wsProtocol}://${host}/ws`  // Production WebSocket through Caddy
+                : `${wsProtocol}://localhost:3001`;  // Direct in development
+            
+            let hls = null;
+
+            // Set video attributes for autoplay
+            video.muted = true; // Mute initially to bypass autoplay restrictions
+            video.autoplay = true;
+            
+            if (Hls.isSupported()) {
+                console.log('✅ HLS.js is supported');
+                hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90,
+                    xhrSetup: function(xhr, url) {
+                        xhr.withCredentials = false;
+                    },
+                    // Updated configuration format
+                    manifestLoadPolicy: {
+                        default: {
+                            maxTimeToFirstByteMs: null,
+                            maxLoadTimeMs: 20000,
+                            timeoutRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            },
+                            errorRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            }
+                        }
+                    },
+                    playlistLoadPolicy: {
+                        default: {
+                            maxTimeToFirstByteMs: 10000,
+                            maxLoadTimeMs: 20000,
+                            timeoutRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            },
+                            errorRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            }
+                        }
+                    }
+                });
+
+                // Remove the source element to prevent conflicts
+                const sourceElement = video.querySelector('source');
+                if (sourceElement) {
+                    video.removeChild(sourceElement);
+                }
+                video.src = '';
+
+                console.log('🔄 Loading stream source:', hlsUrl);
+
+                hls.on(Hls.Events.MANIFEST_LOADING, () => {
+                    console.log('�� Attempting to load HLS manifest...');
+                });
+
+                hls.loadSource(hlsUrl);
+                hls.attachMedia(video);
+
+                // Make hls instance available globally for quality selection
+                window.hls = hls;
+
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    console.log('✅ HLS manifest parsed, attempting playback');
+                    
+                    // Try to play the video
+                    const playPromise = video.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            // Autoplay started successfully
+                            console.log('✅ Autoplay started successfully');
+                            
+                            // Add unmute button for better user experience
+                            if (video.muted) {
+                                showUnmutePrompt();
+                            }
+                        }).catch(error => {
+                            // Autoplay was prevented
+                            console.log('❌ Autoplay prevented:', error);
+                            showPlayButton();
+                        });
+                    }
+                });
+
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.error('❌ HLS Error:', data);
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.log('🔄 Network error, attempting recovery...');
+                                
+                                // Check if this is a 404 error (stream not available)
+                                if (data.response && data.response.code === 404) {
+                                    console.log('⚠️ Stream not available (404). Waiting for stream to start...');
+                                    
+                                    // Update UI to show waiting state
+                                    const statusElement = document.getElementById('status');
+                                    const statusTextElement = document.getElementById('statusText');
+                                    if (statusElement && statusTextElement) {
+                                        statusElement.classList.remove('online');
+                                        statusElement.classList.add('offline');
+                                        statusTextElement.textContent = 'WAITING FOR STREAM';
+                                    }
+                                    
+                                    // Retry loading after a delay
+                                    setTimeout(() => {
+                                        console.log('🔄 Retrying stream load...');
+                                        hls.startLoad();
+                                    }, 5000); // Retry every 5 seconds
+                                } else {
+                                    // For other network errors, try immediate recovery
+                                    hls.startLoad();
+                                }
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.log('🔄 Media error, attempting recovery...');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                console.log('💀 Fatal error, destroying player...');
+                                if (hls) {
+                                    hls.destroy();
+                                    hls = null;
+                                }
+                                break;
+                        }
+                    }
+                });
+            }
+            // For browsers that natively support HLS (like Safari)
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = hlsUrl;
+                video.addEventListener('loadedmetadata', function () {
+                    video.play().catch(function (error) {
+                        console.log('Playback failed:', error);
+                    });
+                });
+            }
+            else {
+                console.error('HLS is not supported in this browser');
+                // Update UI to show error state
+                const statusElement = document.getElementById('status');
+                const statusTextElement = document.getElementById('statusText');
+                if (statusElement && statusTextElement) {
+                    statusElement.classList.add('offline');
+                    statusTextElement.textContent = 'NOT SUPPORTED';
+                }
+            }
+        });
+        
+        // Function to show unmute prompt
+        function showUnmutePrompt() {
+            const videoPlayer = document.querySelector('.video-player');
+            
+            // Create unmute prompt if it doesn't exist
+            if (!document.querySelector('.autoplay-prompt')) {
+                const prompt = document.createElement('div');
+                prompt.className = 'autoplay-prompt';
+                prompt.innerHTML = `
+                    <div class="autoplay-message">Stream playing. Click to unmute.</div>
+                    <button class="unmute-button">Unmute</button>
+                `;
+                videoPlayer.appendChild(prompt);
+                
+                // Add event listener to unmute button
+                document.querySelector('.unmute-button').addEventListener('click', function() {
+                    const video = document.getElementById('videoPlayer');
+                    video.muted = false;
+                    prompt.remove();
+                });
+                
+                // Auto-hide after 10 seconds
+                setTimeout(() => {
+                    if (prompt.parentNode) {
+                        prompt.remove();
+                    }
+                }, 10000);
+            }
+        }
+        
+        // Function to show play button if autoplay is blocked
+        function showPlayButton() {
+            const videoPlayer = document.querySelector('.video-player');
+            
+            // Create play prompt if it doesn't exist
+            if (!document.querySelector('.autoplay-prompt')) {
+                const prompt = document.createElement('div');
+                prompt.className = 'autoplay-prompt';
+                prompt.innerHTML = `
+                    <div class="autoplay-message">Autoplay blocked by browser</div>
+                    <button class="unmute-button">Play Stream</button>
+                `;
+                videoPlayer.appendChild(prompt);
+                
+                // Add event listener to play button
+                document.querySelector('.unmute-button').addEventListener('click', function() {
+                    const video = document.getElementById('videoPlayer');
+                    video.muted = true; // Keep muted to ensure it can play
+                    video.play()
+                        .then(() => {
+                            // Show unmute option after successful play
+                            prompt.innerHTML = `
+                                <div class="autoplay-message">Stream playing. Click to unmute.</div>
+                                <button class="unmute-button">Unmute</button>
+                            `;
+                            
+                            document.querySelector('.unmute-button').addEventListener('click', function() {
+                                video.muted = false;
+                                prompt.remove();
+                            });
+                        })
+                        .catch(e => console.error('Play failed:', e));
+                });
+            }
+        }
+
+        // Function to jump to live stream
+        function jumpToLive() {
+            const video = document.getElementById('videoPlayer');
+            const liveBtn = document.querySelector('.live-btn');
+            
+            // If using HLS.js
+            if (window.hls) {
+                // Jump to live edge
+                window.hls.liveSyncPosition = null;
+                window.hls.currentLevel = -1; // Auto quality
+                
+                // Start playing if paused
+                if (video.paused) {
+                    video.play().catch(e => console.error('Play failed:', e));
+                }
+                
+                // Visual feedback
+                liveBtn.classList.remove('inactive');
+                liveBtn.style.animation = 'pulse 0.5s';
+                setTimeout(() => {
+                    liveBtn.style.animation = '';
+                }, 500);
+            } 
+            // For native HLS support
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // For native players, seeking to end usually jumps to live
+                video.currentTime = video.seekable.end(video.seekable.length - 1);
+                
+                if (video.paused) {
+                    video.play().catch(e => console.error('Play failed:', e));
+                }
+            }
+        }
+        
+        // Add event listener to update live button state
+        document.getElementById('videoPlayer').addEventListener('timeupdate', function() {
+            const video = this;
+            const liveBtn = document.querySelector('.live-btn');
+            
+            if (!liveBtn) return;
+            
+            // Check if we're at the live edge (within 10 seconds)
+            const atLiveEdge = video.duration - video.currentTime < 10;
+            
+            if (atLiveEdge && !video.paused) {
+                liveBtn.classList.remove('inactive');
+            } else {
+                liveBtn.classList.add('inactive');
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="js/websocket.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/donations.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/countdown.js"></script>
+    <script>
+        function debugChatHistory() {
+            console.log('Current chat history:', chatHistory);
+            alert(`Chat history contains ${chatHistory.length} messages. Check console for details.`);
+            
+            // Force reload chat history from server
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({
+                    type: 'REQUEST_CHAT_HISTORY'
+                }));
+            } else {
+                alert('WebSocket not connected. Cannot request chat history.');
+            }
+        }
+    </script>
 </body>
+
 </html>
