@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const NodeMediaServer = require('node-media-server');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -197,6 +198,54 @@ process.on('SIGINT', () => {
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
     saveChatHistory();
+});
+
+// Configure Node-Media-Server
+const nmsConfig = {
+    rtmp: {
+        port: 1935,
+        chunk_size: 60000,
+        gop_cache: true,
+        ping: 30,
+        ping_timeout: 60
+    },
+    http: {
+        port: 8000,
+        allow_origin: '*',
+        mediaroot: './media'
+    }
+};
+
+// Create RTMP server instance
+const nms = new NodeMediaServer(nmsConfig);
+nms.run();
+
+// Add stream authentication
+nms.on('prePublish', (id, StreamPath, args) => {
+    let stream_key = StreamPath.split('/')[2];
+    
+    if (stream_key === STREAM_KEY) {
+        isStreaming = true;
+        broadcast({ 
+            type: 'STREAM_STATUS', 
+            status: 'LIVE',
+            viewers: viewerCount 
+        });
+        let session = nms.getSession(id);
+        session.publishSuccess();
+    } else {
+        let session = nms.getSession(id);
+        session.reject();
+    }
+});
+
+nms.on('donePublish', () => {
+    isStreaming = false;
+    broadcast({ 
+        type: 'STREAM_STATUS', 
+        status: 'OFFLINE',
+        viewers: viewerCount 
+    });
 });
 
 server.listen(3001, () => {
