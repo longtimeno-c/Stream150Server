@@ -1,5 +1,3 @@
-import tkinter as tk
-from tkinter import font as tkFont
 import websocket
 import json
 import threading
@@ -17,33 +15,11 @@ YOUTUBE_CHANNEL_ID = "UC5MvICzk7cb1Oh2c9VBrnIw"  # Find from YouTube channel URL
 YOUTUBE_LIVE_CHAT_ID = None  # Will be fetched dynamically
 WEBSOCKET_URL = "ws://localhost:3001"  # Match your Node.js server
 
-def create_chat_overlay():
-    chat_overlay = tk.Tk()
-    chat_overlay.title("Chat Overlay")
-    chat_overlay.geometry("+800+200")
-    chat_overlay.attributes("-topmost", True)
-    
-    chat_frame = tk.Frame(chat_overlay, bg="black")
-    chat_frame.pack(fill="both", expand=True, padx=0, pady=0)
-
-    chat_box = tk.Text(chat_frame, wrap="word", height=15, width=45, 
-                      bg="black", fg="white", font=("Helvetica", 14, "bold"), 
-                      bd=0, highlightthickness=0)
-    chat_box.pack(expand=True, fill="both")
-    chat_box.insert("end", "Connecting to chats...\n")
-    chat_box.config(state="disabled")
-
-    chat_box.tag_configure("twitch", foreground="white", background="purple")
-    chat_box.tag_configure("youtube", foreground="white", background="red")
-
-    return chat_overlay, chat_box
-
 # Twitch Chat Bot
 class TwitchChatBot(commands.Bot):
-    def __init__(self, ws, chat_box):
+    def __init__(self, ws):
         super().__init__(token=TWITCH_TOKEN, prefix="!", initial_channels=[TWITCH_CHANNEL])
         self.ws = ws
-        self.chat_box = chat_box
 
     async def event_ready(self):
         print(f"Connected to Twitch chat as {self.nick}")
@@ -51,29 +27,24 @@ class TwitchChatBot(commands.Bot):
     async def event_message(self, message):
         if message.author is None:
             return
-        msg = f"Twitch | {message.author.name}: {message.content}"
+        msg = f"{message.author.name}: {message.content}"
         self.send_to_websocket(msg, "twitch")
-        self.update_chat_box(msg, "twitch")
+        print(f"Twitch | {msg}")
 
     def send_to_websocket(self, msg, platform):
         if self.ws and self.ws.connected:
             self.ws.send(json.dumps({
                 "type": "CHAT_MESSAGE",
                 "platform": platform,
-                "message": msg
+                "username": msg.split(":")[0].strip(),
+                "message": msg.split(":", 1)[1].strip(),
+                "timestamp": ""
             }))
-
-    def update_chat_box(self, msg, tag):
-        self.chat_box.config(state="normal")
-        self.chat_box.insert("end", msg + "\n", tag)
-        self.chat_box.yview("end")
-        self.chat_box.config(state="disabled")
 
 # YouTube Chat Fetcher
 class YouTubeChatFetcher:
-    def __init__(self, ws, chat_box):
+    def __init__(self, ws):
         self.ws = ws
-        self.chat_box = chat_box
         self.running = True
         self.live_chat_id = None
         self.processed_message_ids = set()
@@ -111,9 +82,11 @@ class YouTubeChatFetcher:
                         for item in data["items"]:
                             if item["id"] not in self.processed_message_ids:
                                 self.processed_message_ids.add(item["id"])
-                                msg = f"YouTube | {item['authorDetails']['displayName']}: {item['snippet']['displayMessage']}"
+                                username = item['authorDetails']['displayName']
+                                message = item['snippet']['displayMessage']
+                                msg = f"{username}: {message}"
                                 self.send_to_websocket(msg, "youtube")
-                                self.update_chat_box(msg, "youtube")
+                                print(f"YouTube | {msg}")
             await asyncio.sleep(5)
 
     def send_to_websocket(self, msg, platform):
@@ -121,24 +94,16 @@ class YouTubeChatFetcher:
             self.ws.send(json.dumps({
                 "type": "CHAT_MESSAGE",
                 "platform": platform,
-                "message": msg
+                "username": msg.split(":")[0].strip(),
+                "message": msg.split(":", 1)[1].strip(),
+                "timestamp": ""
             }))
 
-    def update_chat_box(self, msg, tag):
-        self.chat_box.config(state="normal")
-        self.chat_box.insert("end", msg + "\n", tag)
-        self.chat_box.yview("end")
-        self.chat_box.config(state="disabled")
-
-def run_websocket(chat_box, twitch_bot, youtube_fetcher):
+def run_websocket(twitch_bot, youtube_fetcher):
     def on_message(ws, message):
         data = json.loads(message)
         if data["type"] == "CHAT_MESSAGE":
-            tag = "twitch" if data["platform"] == "twitch" else "youtube"
-            chat_box.config(state="normal")
-            chat_box.insert("end", data["message"] + "\n", tag)
-            chat_box.yview("end")
-            chat_box.config(state="disabled")
+            print(f"Received: {data['platform']} | {data['username']}: {data['message']}")
 
     def on_open(ws):
         print("Connected to WebSocket server")
@@ -151,18 +116,22 @@ def run_websocket(chat_box, twitch_bot, youtube_fetcher):
     ws.run_forever()
 
 if __name__ == "__main__":
-    chat_overlay, chat_box = create_chat_overlay()
-    
     # Initialize WebSocket connection
-    ws_thread = threading.Thread(target=run_websocket, args=(chat_box,), daemon=True)
-    ws_thread.start()
-
+    ws_app = None  # Will be set when connection opens
+    
     # Start Twitch Chat
-    twitch_bot = TwitchChatBot(None, chat_box)  # ws will be set when connection opens
-    threading.Thread(target=lambda: asyncio.run(twitch_bot.start()), daemon=True).start()
-
+    twitch_bot = TwitchChatBot(ws_app)
+    
     # Start YouTube Chat
-    youtube_fetcher = YouTubeChatFetcher(None, chat_box)  # ws will be set when connection opens
-    threading.Thread(target=lambda: asyncio.run(youtube_fetcher.fetch_chat_messages()), daemon=True).start()
-
-    chat_overlay.mainloop()
+    youtube_fetcher = YouTubeChatFetcher(ws_app)
+    
+    # Start WebSocket in a separate thread
+    ws_thread = threading.Thread(target=run_websocket, args=(twitch_bot, youtube_fetcher), daemon=True)
+    ws_thread.start()
+    
+    # Start Twitch bot in a separate thread
+    twitch_thread = threading.Thread(target=lambda: asyncio.run(twitch_bot.start()), daemon=True)
+    twitch_thread.start()
+    
+    # Start YouTube fetcher in the main thread
+    asyncio.run(youtube_fetcher.fetch_chat_messages())
