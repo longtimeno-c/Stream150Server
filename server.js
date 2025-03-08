@@ -351,7 +351,7 @@ const config = {
         mediaroot: './media'
     },
     trans: {
-        ffmpeg: process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg',
+        ffmpeg: '/usr/bin/ffmpeg',  // Explicit path to ffmpeg on Ubuntu
         tasks: [
             {
                 app: 'live',
