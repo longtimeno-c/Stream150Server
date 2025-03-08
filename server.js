@@ -9,7 +9,7 @@ const EventEmitter = require('events')
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
-const MAX_CHAT_HISTORY = 1000; // Increased for better continuity
+const MAX_CHAT_HISTORY = 100;
 
 const app = express();
 const server = http.createServer(app);
@@ -210,88 +210,95 @@ app.use((req, res) => {
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
-    console.log('👤 New WebSocket client connected');
+    console.log('New WebSocket client connected');
     viewerCount++;
     
-    // Send initial stream status immediately
+    // Send initial stream status and viewer count
     ws.send(JSON.stringify({ 
         type: 'STREAM_STATUS', 
         status: isStreaming ? 'LIVE' : 'OFFLINE',
         viewers: viewerCount 
     }));
-
-    // Send chat history as a single batch
+    
+    // Send the last 50 chat messages instead of the entire history
+    // Make sure to include the most recent messages
+    const recentMessages = chatHistory.slice(-50);
+    console.log(`Sending ${recentMessages.length} recent chat messages to new client`);
+    
     ws.send(JSON.stringify({
         type: 'CHAT_HISTORY',
-        messages: chatHistory
+        messages: recentMessages
     }));
-
-    // Add a ping interval to keep connection alive
-    const pingInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.ping();
-        }
-    }, 30000);
-
+    
+    // Broadcast updated viewer count
+    broadcast({
+        type: 'VIEWER_COUNT',
+        viewers: viewerCount
+    });
+    
+    // Handle incoming messages
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
+            
             if (data.type === 'CHAT_MESSAGE') {
+                // Format the chat message
                 const chatMessage = {
                     type: 'CHAT_MESSAGE',
                     platform: data.platform || 'web',
-                    message: data.message,
                     username: data.username || 'Anonymous',
+                    message: data.message,
                     timestamp: new Date().toISOString(),
                     id: Date.now().toString()
                 };
                 
                 // Add to chat history
                 chatHistory.push(chatMessage);
+                console.log(`Added message to chat history. Total: ${chatHistory.length}`);
                 
                 // Maintain maximum history size
                 if (chatHistory.length > MAX_CHAT_HISTORY) {
-                    chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
+                    chatHistory.shift();
                 }
                 
-                // Save immediately after each message
-                saveChatHistory();
+                // Save chat history periodically (every 10 messages)
+                if (chatHistory.length % 10 === 0) {
+                    saveChatHistory();
+                }
                 
-                // Broadcast to ALL clients INCLUDING sender
+                // Broadcast to all clients
                 broadcast(chatMessage);
+            } else if (data.type === 'REQUEST_CHAT_HISTORY') {
+                console.log('Client requested chat history');
+                const recentMessages = chatHistory.slice(-50);
+                ws.send(JSON.stringify({
+                    type: 'CHAT_HISTORY',
+                    messages: recentMessages
+                }));
             }
         } catch (err) {
             console.error('Error processing message:', err);
         }
     });
-
+    
+    // Handle disconnection
     ws.on('close', () => {
-        console.log('👋 WebSocket client disconnected');
-        clearInterval(pingInterval);
-        viewerCount--;
-        broadcast({ 
-            type: 'VIEWER_COUNT', 
-            viewers: viewerCount 
+        console.log('WebSocket client disconnected');
+        viewerCount = Math.max(0, viewerCount - 1);
+        
+        // Broadcast updated viewer count
+        broadcast({
+            type: 'VIEWER_COUNT',
+            viewers: viewerCount
         });
-    });
-
-    ws.on('error', (error) => {
-        clearInterval(pingInterval);
-        console.error('WebSocket error:', error);
     });
 });
 
-// Update broadcast function with logging
-function broadcast(data) {
-    console.log('📢 Broadcasting:', data);
-    const message = JSON.stringify(data);
+// Function to broadcast messages to all connected clients
+function broadcast(message) {
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
-            try {
-                client.send(message);
-            } catch (err) {
-                console.error('❌ Error broadcasting message:', err);
-            }
+            client.send(JSON.stringify(message));
         }
     });
 }

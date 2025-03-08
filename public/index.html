@@ -64,6 +64,9 @@
                 <button class="chat-send-btn" onclick="sendChat()">Send</button>
             </div>
             <div id="countdown" class="below-chat-countdown"></div>
+            <div class="chat-debug-controls" style="margin-top: 10px; text-align: right; font-size: 12px;">
+                <button onclick="debugChatHistory()" class="debug-btn">Debug Chat</button>
+            </div>
         </div>
     </div>
 
@@ -388,6 +391,21 @@
     <script src="js/donations.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/countdown.js"></script>
+    <script>
+        function debugChatHistory() {
+            console.log('Current chat history:', chatHistory);
+            alert(`Chat history contains ${chatHistory.length} messages. Check console for details.`);
+            
+            // Force reload chat history from server
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({
+                    type: 'REQUEST_CHAT_HISTORY'
+                }));
+            } else {
+                alert('WebSocket not connected. Cannot request chat history.');
+            }
+        }
+    </script>
 </body>
 
 </html>
