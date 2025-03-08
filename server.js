@@ -22,7 +22,7 @@ function loadChatHistory() {
     try {
         if (fs.existsSync(CHAT_HISTORY_FILE)) {
             const data = fs.readFileSync(CHAT_HISTORY_FILE, 'utf8');
-            chatHistory = JSON.parse(data);
+            chatHistory = JSON.parse(data || '[]'); // Handle empty file case
             console.log(`Loaded ${chatHistory.length} messages from chat history`);
             
             // Clean up old messages if exceeding max
@@ -30,6 +30,11 @@ function loadChatHistory() {
                 chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
                 saveChatHistory(); // Save the cleaned up history
             }
+        } else {
+            // Create the file if it doesn't exist
+            fs.writeFileSync(CHAT_HISTORY_FILE, '[]');
+            chatHistory = [];
+            console.log('Created new chat history file');
         }
     } catch (err) {
         console.error('Error loading chat history:', err);
@@ -40,7 +45,15 @@ function loadChatHistory() {
 // Save chat history to file
 function saveChatHistory() {
     try {
+        // Ensure directory exists
+        const dir = path.dirname(CHAT_HISTORY_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        // Save the chat history
         fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(chatHistory, null, 2));
+        console.log(`Saved ${chatHistory.length} messages to chat history`);
     } catch (err) {
         console.error('Error saving chat history:', err);
     }
@@ -101,17 +114,11 @@ wss.on('connection', (ws) => {
                     chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
                 }
                 
-                // Broadcast to ALL clients EXCEPT sender
-                wss.clients.forEach((client) => {
-                    if (client !== ws && client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify(chatMessage));
-                    }
-                });
+                // Save immediately after each message
+                saveChatHistory();
                 
-                // Save periodically
-                if (chatHistory.length % 10 === 0) {
-                    saveChatHistory();
-                }
+                // Broadcast to ALL clients INCLUDING sender
+                broadcast(chatMessage);
             }
         } catch (err) {
             console.error('Error processing message:', err);
@@ -147,8 +154,8 @@ function broadcast(data) {
     });
 }
 
-// Save chat history periodically (every 5 minutes)
-setInterval(saveChatHistory, 5 * 60 * 1000);
+// Save chat history more frequently (every minute)
+setInterval(saveChatHistory, 60 * 1000);
 
 app.post('/authenticate', (req, res) => {
     const { name } = req.body;
@@ -175,17 +182,16 @@ app.post('/stream-ended', (req, res) => {
     res.status(200).send('Stream Ended');
 });
 
-// Graceful shutdown
+// Ensure chat history is saved on exit
 process.on('SIGINT', () => {
     console.log('Saving chat history before exit...');
     saveChatHistory();
     process.exit();
 });
 
-// Error handling
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
-    saveChatHistory(); // Save chat history on crash
+    saveChatHistory();
 });
 
 server.listen(3001, () => {
