@@ -20,7 +20,6 @@
                     Your browser does not support the video element.
                 </video>
                 <video id="videoPlaceholder" class="video-placeholder" playsinline loop muted autoplay>
-                    <source src="../public/logo.mp4" type="video/mp4">
                     Waiting...
                 </video>
                 <div class="status-bar">
@@ -42,6 +41,8 @@
                         <option value="auto">Auto</option>
                     </select>
                 </div>
+            </div>
+            <div class="donation-section">
                 <div class="donation-buttons">
                     <button class="tangia-btn" onclick="window.open('https://tangia.co/westboys1912')">
                         <img src="https://cdn-icons-png.flaticon.com/512/888/888879.png" alt="Tangia Logo" class="btn-logo">
@@ -102,23 +103,66 @@
 
     <script>
         const video = document.getElementById('videoPlayer');
-        const videoSrc = 'http://watch.stream150.com:8000/live/StreamtoME/index.m3u8';
-        
-        if (Hls.isSupported()) {
-            const hls = new Hls();
-            hls.loadSource(videoSrc);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                video.play();
-            });
+        const placeholder = document.getElementById('videoPlaceholder');
+        const videoSrc = 'http://localhost:8000/live/StreamtoME/index.m3u8';
+        let hls;
+    
+        function initHLS() {
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    debug: true,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+    
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    console.log('HLS manifest loaded');
+                    updateStreamStatus('LIVE');
+                    video.play().catch(e => console.log('Autoplay failed:', e));
+                    video.style.display = 'block';
+                    placeholder.style.display = 'none';
+                });
+    
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.log('HLS Error:', data);
+                    if (data.fatal) {
+                        updateStreamStatus('OFFLINE');
+                        hls.destroy();
+                        hls = null;
+                        video.style.display = 'none';
+                        placeholder.style.display = 'block';
+                        setTimeout(() => initHLS(), 2000);
+                    }
+                });
+    
+                hls.loadSource(videoSrc);
+                hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = videoSrc;
+                video.addEventListener('loadedmetadata', () => {
+                    updateStreamStatus('LIVE');
+                    video.play();
+                });
+            }
         }
-        // For browsers that support HLS natively (Safari)
-        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = videoSrc;
-            video.addEventListener('loadedmetadata', function() {
-                video.play();
-            });
+    
+        function updateStreamStatus(status) {
+            const statusElement = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            
+            statusText.textContent = status;
+            if (status === 'LIVE') {
+                statusElement.classList.remove('offline');
+                statusElement.classList.add('online');
+            } else {
+                statusElement.classList.remove('online');
+                statusElement.classList.add('offline');
+            }
         }
+    
+        // Initial setup
+        initHLS();
     </script>
 </body>
 </html>

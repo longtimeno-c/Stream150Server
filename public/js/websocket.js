@@ -1,30 +1,33 @@
-const ws = new WebSocket('ws://localhost:3001');
+// js/websocket.js
+const socket = new WebSocket('ws://localhost:3001');
 
-ws.onmessage = (event) => {
+socket.onopen = () => {
+    console.log('WebSocket connected');
+};
+
+socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    
-    if (data.type === 'STREAM_STATUS') {
-        updateStreamStatus(data);
-    } else if (data.type === 'VIEWER_COUNT') {
-        updateViewerCount(data.viewers);
-    } else if (data.type === 'CHAT_HISTORY') {
-        loadChatHistory(data.messages);
-    } else if (data.type === 'CHAT_MESSAGE') {
-        handleNewChatMessage(data);
+    switch (data.type) {
+        case 'VIEWER_COUNT':
+            updateViewerCount(data.viewers);
+            break;
+        case 'CHAT_MESSAGE':
+            // Handle chat messages (implemented elsewhere)
+            break;
+        case 'CHAT_HISTORY':
+            // Handle chat history
+            break;
     }
 };
 
-ws.onopen = () => {
-    console.log('Connected to chat server');
-};
-
-ws.onerror = (error) => {
+socket.onerror = (error) => {
     console.error('WebSocket error:', error);
 };
 
-ws.onclose = () => {
-    console.log('Disconnected from chat server');
-    setTimeout(() => {
-        window.location.reload();
-    }, 5000);
-}; 
+socket.onclose = () => {
+    console.log('WebSocket closed');
+};
+
+function updateViewerCount(count) {
+    document.getElementById('viewerCount').textContent = count;
+}

@@ -501,3 +501,29 @@ body {
     text-align: center;
     font-size: 0.9rem;
 }
+
+.donation-section {
+    margin-top: 20px;
+}
+
+/* Update fullscreen styles */
+.video-player:fullscreen {
+    padding-bottom: 100vh;
+}
+
+.video-player:fullscreen .donation-section,
+.video-player:fullscreen .donation-buttons,
+.video-player:fullscreen .donation-tracker {
+    display: none;
+}
+
+/* For webkit browsers */
+.video-player:-webkit-full-screen {
+    padding-bottom: 100vh;
+}
+
+.video-player:-webkit-full-screen .donation-section,
+.video-player:-webkit-full-screen .donation-buttons,
+.video-player:-webkit-full-screen .donation-tracker {
+    display: none;
+}
