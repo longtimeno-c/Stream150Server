@@ -194,7 +194,29 @@
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 console.log('🔄 Network error, attempting recovery...');
-                                hls.startLoad();
+                                
+                                // Check if this is a 404 error (stream not available)
+                                if (data.response && data.response.code === 404) {
+                                    console.log('⚠️ Stream not available (404). Waiting for stream to start...');
+                                    
+                                    // Update UI to show waiting state
+                                    const statusElement = document.getElementById('status');
+                                    const statusTextElement = document.getElementById('statusText');
+                                    if (statusElement && statusTextElement) {
+                                        statusElement.classList.remove('online');
+                                        statusElement.classList.add('offline');
+                                        statusTextElement.textContent = 'WAITING FOR STREAM';
+                                    }
+                                    
+                                    // Retry loading after a delay
+                                    setTimeout(() => {
+                                        console.log('🔄 Retrying stream load...');
+                                        hls.startLoad();
+                                    }, 5000); // Retry every 5 seconds
+                                } else {
+                                    // For other network errors, try immediate recovery
+                                    hls.startLoad();
+                                }
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
                                 console.log('🔄 Media error, attempting recovery...');
