@@ -3,22 +3,27 @@ console.log('🔍 UI.js loaded and executing');
 let hls = null;
 let currentStream = null;
 
-function initializeStream() {
+function getStreamUrls(useLocalhost = false) {
+    const host = useLocalhost ? 'localhost' : 'watch.stream150.com';
+    return {
+        hls: `https://${host}:8000/live/StreamtoME/index.m3u8`,
+        flv: `https://${host}:8000/live/StreamtoME.flv`
+    };
+}
+
+function initializeStream(useLocalhost = false) {
     console.log('🔍 initializeStream called');
     console.log('🎥 Initializing stream player...');
     const video = document.getElementById('videoPlayer');
     const placeholder = document.getElementById('videoPlaceholder');
-    
-    // Use window.location.hostname instead of localhost
-    const serverHost = window.location.hostname;
-    const hlsUrl = `http://${serverHost}:8000/live/StreamtoME/index.m3u8`;
-    const flvUrl = `http://${serverHost}:8000/live/StreamtoME.flv`;
+
+    const urls = getStreamUrls(useLocalhost);
     
     // Show video, hide placeholder
     video.style.display = 'block';
     placeholder.style.display = 'none';
     
-    if (Hls.isSupported()) {
+    if (hls.isSupported()) {
         console.log('✅ HLS.js is supported');
         if (hls) {
             console.log('♻️ Destroying existing HLS instance');
@@ -39,30 +44,35 @@ function initializeStream() {
             levelLoadingMaxRetryTimeout: 10000
         });
 
-        console.log('🔄 Loading stream source:', hlsUrl);
+        console.log('🔄 Loading stream source:', urls.hls);
         
         // Add manifest loading error handler
-        hls.on(Hls.Events.MANIFEST_LOADING, () => {
+        hls.on(hls.Events.MANIFEST_LOADING, () => {
             console.log('📡 Attempting to load HLS manifest...');
         });
 
-        hls.loadSource(hlsUrl);
+        hls.loadSource(urls.hls);
         hls.attachMedia(video);
         
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.on(hls.Events.MANIFEST_PARSED, () => {
             console.log('✅ HLS manifest parsed, attempting playback');
             video.play().catch(e => console.log('❌ Autoplay failed:', e));
         });
 
-        hls.on(Hls.Events.ERROR, (event, data) => {
+        hls.on(hls.Events.ERROR, (event, data) => {
             console.error('❌ HLS Error:', data);
             if (data.fatal) {
                 switch(data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
+                    case hls.ErrorTypes.NETWORK_ERROR:
+                        if (!useLocalhost) {
+                            console.log('🔄 Network error with primary URL, trying localhost...');
+                            initializeStream(true);
+                            return;
+                        }
                         console.log('🔄 Network error, attempting recovery...');
                         hls.startLoad();
                         break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
+                    case hls.ErrorTypes.MEDIA_ERROR:
                         console.log('🔄 Media error, attempting recovery...');
                         hls.recoverMediaError();
                         break;
@@ -77,7 +87,7 @@ function initializeStream() {
     // For Safari and iOS
     else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         console.log('📱 Using native HLS support');
-        video.src = hlsUrl;
+        video.src = urls.hls;
         video.addEventListener('loadedmetadata', () => {
             video.play().catch(e => console.log('❌ Autoplay failed:', e));
         });
@@ -86,7 +96,7 @@ function initializeStream() {
     if (flvjs.isSupported()) {
         const flvPlayer = flvjs.createPlayer({
             type: 'flv',
-            url: flvUrl,
+            url: urls.flv,
             isLive: true,
             hasAudio: true,
             hasVideo: true,
@@ -297,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update WebSocket connection to use the correct port and path
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.hostname}:3001`;
+    const wsUrl = `${wsProtocol}//watch.stream150.com:3001`;
     const ws = new WebSocket(wsUrl);
     console.log('🔌 Attempting WebSocket connection to:', wsUrl);
 
@@ -426,8 +436,8 @@ function initHLS(streamUrl) {
     }
 }
 
-// Update checkStreamAvailability to initialize HLS when stream is available
-function checkStreamAvailability(url) {
+// Update checkStreamAvailability to handle fallback
+function checkStreamAvailability(url, tryLocalhost = true) {
     return fetch(url, { method: 'HEAD' })
         .then(response => {
             if (!response.ok) {
@@ -439,48 +449,31 @@ function checkStreamAvailability(url) {
         })
         .catch(error => {
             console.warn('Stream availability check failed:', error);
+            if (tryLocalhost && url.includes('watch.stream150.com')) {
+                console.log('Trying localhost fallback...');
+                const localhostUrl = url.replace('watch.stream150.com', 'localhost');
+                return checkStreamAvailability(localhostUrl, false);
+            }
             video.style.display = 'none';
             videoPlaceholder.style.display = 'block';
             return false;
         });
 }
 
-// Add WebSocket handler for stream status
-socket.addEventListener('message', (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === 'STREAM_STATUS') {
-        const statusElement = document.getElementById('status');
-        const statusTextElement = document.getElementById('statusText');
-        
-        if (data.status === 'LIVE') {
-            statusElement.className = 'status-indicator live';
-            statusTextElement.textContent = 'LIVE';
-            // Check stream when we get LIVE status
-            checkStreamAvailability('http://localhost:8000/live/StreamtoME/index.m3u8');
-        } else {
-            statusElement.className = 'status-indicator offline';
-            statusTextElement.textContent = 'OFFLINE';
-            video.style.display = 'none';
-            videoPlaceholder.style.display = 'block';
-        }
-    }
-});
-
-// Modify the WebSocket message handler to include stream availability check
+// Update handleStreamStatusUpdate to use the new URL handling
 function handleStreamStatusUpdate(status) {
     console.log('🎥 Stream status update:', status);
     updateStreamStatus(status);
     
     if (status === 'LIVE') {
-        const serverHost = window.location.hostname;
-        const hlsUrl = `http://${serverHost}:8000/live/StreamtoME/index.m3u8`;
+        const urls = getStreamUrls(false);
         
         // Check stream availability before initializing
-        checkStreamAvailability(hlsUrl)
+        checkStreamAvailability(urls.hls)
             .then(isAvailable => {
                 if (isAvailable) {
                     console.log('🟢 Stream is available, initializing player...');
-                    initializeStream();
+                    initializeStream(false);
                 } else {
                     console.log('🟡 Stream not ready yet, retrying in 5 seconds...');
                     setTimeout(() => handleStreamStatusUpdate(status), 5000);
