@@ -96,7 +96,8 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const video = document.getElementById('videoPlayer');
-            const source = 'http://localhost:8000/live/StreamtoME/index.m3u8';
+            // Update this URL to your public server address
+            const source = window.location.protocol + '//' + window.location.hostname + ':8000/live/StreamtoME/index.m3u8';
             
             if (Hls.isSupported()) {
                 const hls = new Hls({
@@ -104,29 +105,81 @@
                     maxMaxBufferLength: 60,
                     enableWorker: true,
                     lowLatencyMode: true,
-                    backBufferLength: 90
-                });
-                hls.loadSource(source);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
+                    backBufferLength: 90,
+                    // Add more aggressive error recovery
+                    fragLoadingMaxRetry: 5,
+                    manifestLoadingMaxRetry: 5,
+                    levelLoadingMaxRetry: 5,
+                    fragLoadingRetryDelay: 1000,
+                    manifestLoadingRetryDelay: 1000,
+                    levelLoadingRetryDelay: 1000
                 });
 
-                // Log stream information
+                hls.loadSource(source);
+                hls.attachMedia(video);
+
+                // Add error handling
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.log('HLS Error:', data);
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.log('Network error, trying to recover...');
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.log('Media error, trying to recover...');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                console.log('Unrecoverable error, streaming can not continue');
+                                break;
+                        }
+                    }
+                });
+
+                // Update status when stream starts
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    console.log('Stream manifest loaded');
+                    const statusElement = document.getElementById('status');
+                    const statusTextElement = document.getElementById('statusText');
+                    if (statusElement && statusTextElement) {
+                        statusElement.classList.remove('offline');
+                        statusElement.classList.add('live');
+                        statusTextElement.textContent = 'LIVE';
+                    }
+                    video.play().catch(function(error) {
+                        console.log('Playback failed:', error);
+                    });
+                });
+
+                // Monitor stream health
                 hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {
                     console.log('Stream details:', {
                         fps: data.details.targetduration,
-                        fragments: data.details.fragments,
+                        fragments: data.details.fragments.length,
                         live: data.details.live
                     });
                 });
             }
-            // For browsers that natively support HLS
+            // For browsers that natively support HLS (like Safari)
             else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = source;
                 video.addEventListener('loadedmetadata', function() {
-                    video.play();
+                    video.play().catch(function(error) {
+                        console.log('Playback failed:', error);
+                    });
                 });
+            }
+            else {
+                console.error('HLS is not supported in this browser');
+                // Update UI to show error state
+                const statusElement = document.getElementById('status');
+                const statusTextElement = document.getElementById('statusText');
+                if (statusElement && statusTextElement) {
+                    statusElement.classList.add('offline');
+                    statusTextElement.textContent = 'NOT SUPPORTED';
+                }
             }
         });
     </script>
