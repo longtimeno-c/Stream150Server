@@ -56,12 +56,20 @@ function updateStreamStatus(data) {
     const statusElement = document.getElementById('status');
     const statusText = document.getElementById('statusText');
     const videoPlaceholder = document.getElementById('videoPlaceholder');
+    const videoPlayer = document.getElementById('videoPlayer');
     
     statusText.textContent = data.status;
     statusElement.className = 'status-indicator ' + 
         (data.status === 'LIVE' ? 'live' : 'offline');
-    videoPlaceholder.textContent = 
-        data.status === 'LIVE' ? 'Stream is Live!' : 'Waiting for stream...';
+        
+    if (data.status === 'LIVE') {
+        videoPlaceholder.style.display = 'none';
+        videoPlayer.style.display = 'block';
+    } else {
+        videoPlaceholder.style.display = 'flex';
+        videoPlayer.style.display = 'none';
+        videoPlaceholder.textContent = 'Waiting for stream...';
+    }
 }
 
 function updateViewerCount(count) {
