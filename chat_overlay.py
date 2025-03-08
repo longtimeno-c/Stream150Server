@@ -129,9 +129,20 @@ if __name__ == "__main__":
     ws_thread = threading.Thread(target=run_websocket, args=(twitch_bot, youtube_fetcher), daemon=True)
     ws_thread.start()
     
-    # Start Twitch bot in a separate thread
-    twitch_thread = threading.Thread(target=lambda: asyncio.run(twitch_bot.start()), daemon=True)
-    twitch_thread.start()
+    # Create a single event loop for both async tasks
+    loop = asyncio.new_event_loop()
     
-    # Start YouTube fetcher in the main thread
-    asyncio.run(youtube_fetcher.fetch_chat_messages())
+    # Run both async tasks in the same event loop
+    async def run_both():
+        twitch_task = loop.create_task(twitch_bot.start())
+        youtube_task = loop.create_task(youtube_fetcher.fetch_chat_messages())
+        # Wait for either task to complete (YouTube task should run indefinitely)
+        await asyncio.gather(twitch_task, youtube_task)
+    
+    try:
+        # Run everything in the main thread with a shared event loop
+        loop.run_until_complete(run_both())
+    except KeyboardInterrupt:
+        print("Shutting down...")
+    finally:
+        loop.close()
