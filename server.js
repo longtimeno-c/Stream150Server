@@ -73,6 +73,9 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
 app.use(express.static(path.join(__dirname, 'public'), {
     setHeaders: (res, path) => {
         if (path.endsWith('.js')) {
@@ -218,6 +221,7 @@ process.on('uncaughtException', (err) => {
 // Configure Node-Media-Server
 const nmsConfig = {
     rtmp: {
+        host: 'localhost',
         port: 1935,
         chunk_size: 60000,
         gop_cache: true,
@@ -225,6 +229,7 @@ const nmsConfig = {
         ping_timeout: 60
     },
     http: {
+        host: 'localhost',
         port: 8000,
         allow_origin: '*',
         mediaroot: './media'
