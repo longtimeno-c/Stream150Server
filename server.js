@@ -13,16 +13,13 @@ const wss = new WebSocket.Server({ server });
 let isStreaming = false;
 let viewerCount = 0;
 
-// Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Serve the main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Authenticate stream key for RTMP server
 app.post('/authenticate', (req, res) => {
     const { name } = req.body;
     if (name === STREAM_KEY) {
@@ -38,7 +35,6 @@ app.post('/authenticate', (req, res) => {
     }
 });
 
-// WebSocket connection handler
 wss.on('connection', (ws) => {
     viewerCount++;
     ws.send(JSON.stringify({ 
@@ -48,7 +44,14 @@ wss.on('connection', (ws) => {
     }));
 
     ws.on('message', (message) => {
-        console.log('received: %s', message);
+        const data = JSON.parse(message);
+        if (data.type === 'CHAT_MESSAGE') {
+            broadcast({
+                type: 'CHAT_MESSAGE',
+                platform: data.platform,
+                message: data.message
+            });
+        }
     });
 
     ws.on('close', () => {
@@ -57,11 +60,9 @@ wss.on('connection', (ws) => {
             type: 'VIEWER_COUNT', 
             viewers: viewerCount 
         });
-        console.log('WebSocket connection closed');
     });
 });
 
-// Broadcast message to all WebSocket clients
 function broadcast(data) {
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
@@ -70,7 +71,6 @@ function broadcast(data) {
     });
 }
 
-// Listen for when the stream stops
 app.post('/stream-ended', (req, res) => {
     isStreaming = false;
     broadcast({ 
