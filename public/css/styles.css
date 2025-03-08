@@ -62,6 +62,25 @@ body {
     display: block;
 }
 
+/* Disable seeking in video controls */
+.video-element::-webkit-media-controls-timeline {
+    display: none !important;
+}
+
+.video-element::-webkit-media-controls-current-time-display,
+.video-element::-webkit-media-controls-time-remaining-display {
+    display: none !important;
+}
+
+/* For Firefox */
+.video-element::-moz-range-thumb {
+    display: none;
+}
+
+.video-element::-moz-range-track {
+    display: none;
+}
+
 .video-placeholder {
     width: 100%;
     height: 100%;
@@ -438,6 +457,32 @@ body {
 
 /* Mobile-specific styles */
 @media (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+    }
+    
+    .video-container {
+        margin-bottom: 10px;
+    }
+    
+    .chat-container {
+        display: block;
+        height: auto;
+        max-height: 400px;
+    }
+    
+    .chat-box {
+        max-height: 250px;
+    }
+    
+    .chat-toggle {
+        display: none;
+    }
+    
+    .mobile-chat-overlay {
+        display: none !important;
+    }
+    
     .donation-tracker {
         margin: 10px;
         width: calc(100% - 20px);
