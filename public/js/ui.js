@@ -160,54 +160,68 @@ function loadChatHistory(messages) {
     mobileChatBox.scrollTop = mobileChatBox.scrollHeight;
 }
 
-// Add event listeners
+// Update WebSocket connection handling
+function initializeWebSocket() {
+    const wsUrl = window.WS_URL; // Use the global WS_URL set in index.html
+    let ws = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    const reconnectDelay = 3000;
+
+    function connect() {
+        ws = new WebSocket(wsUrl);
+        console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+
+        ws.onopen = function() {
+            console.log('✅ WebSocket connection established');
+            reconnectAttempts = 0;
+        };
+
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('📨 Received WebSocket message:', data);
+                
+                switch(data.type) {
+                    case 'STREAM_STATUS':
+                        handleStreamStatusUpdate(data.status);
+                        break;
+                    case 'VIEWER_COUNT':
+                        updateViewerCount(data.viewers);
+                        break;
+                    case 'CHAT_HISTORY':
+                        loadChatHistory(data.messages);
+                        break;
+                }
+            } catch (error) {
+                console.error('❌ Error processing WebSocket message:', error);
+            }
+        };
+
+        ws.onerror = function(error) {
+            console.error('❌ WebSocket error:', error);
+        };
+
+        ws.onclose = function() {
+            console.log('🔌 WebSocket connection closed');
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                console.log(`🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                setTimeout(connect, reconnectDelay);
+            }
+        };
+    }
+
+    connect();
+    return ws;
+}
+
+// Update the DOMContentLoaded event listener
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🔍 DOM Content Loaded - initializing UI components');
-    
-    // Initialize chat components
-    const chatBox = document.getElementById('chatBox');
-    const mobileChatBox = document.getElementById('mobileChatBox');
-    const chatInput = document.getElementById('chatInput');
-    const mobileChatInput = document.getElementById('mobileChatInput');
 
-    if (chatBox && mobileChatBox) {
-        // Chat scroll listeners
-        chatBox.addEventListener('scroll', () => {
-            const isNearBottom = chatBox.scrollHeight - chatBox.clientHeight - chatBox.scrollTop < 100;
-            window.autoScroll = isNearBottom;
-        });
-
-        mobileChatBox.addEventListener('scroll', () => {
-            const isNearBottom = mobileChatBox.scrollHeight - mobileChatBox.clientHeight - mobileChatBox.scrollTop < 100;
-            window.autoScroll = isNearBottom;
-        });
-    }
-
-    if (chatInput && mobileChatInput) {
-        // Chat input listeners
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendChat();
-            }
-        });
-        
-        mobileChatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMobileChat();
-            }
-        });
-    }
-
-    // Initialize donations if the function exists
-    if (typeof createMilestoneMarkers === 'function') {
-        createMilestoneMarkers();
-    }
-    
-    if (typeof updateDonationUI === 'function') {
-        updateDonationUI();
-    }
+    // Initialize WebSocket connection
+    initializeWebSocket();
 
     // Add fullscreen change event listeners
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -215,59 +229,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
-    // Update WebSocket connection to use the correct port and path
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//watch.stream150.com:3001`;
-    const ws = new WebSocket(wsUrl);
-    console.log('🔌 Attempting WebSocket connection to:', wsUrl);
-
-    ws.onopen = function() {
-        console.log('✅ WebSocket connection established');
-    };
-
-    ws.onmessage = function(event) {
-        console.log('📨 Received WebSocket message:', event.data);
-        const data = JSON.parse(event.data);
-        
-        switch(data.type) {
-            case 'STREAM_STATUS':
-                handleStreamStatusUpdate(data.status);
-                break;
-            
-            case 'VIEWER_COUNT':
-                console.log('👥 Viewer count update:', data.viewers);
-                updateViewerCount(data.viewers);
-                break;
-            
-            case 'CHAT_HISTORY':
-                console.log('📜 Received chat history');
-                loadChatHistory(data.messages);
-                break;
-        }
-    };
-
-    ws.onerror = function(error) {
-        console.error('❌ WebSocket error:', error);
-    };
-
-    ws.onclose = function() {
-        console.log('🔌 WebSocket connection closed');
-    };
-
     // Add video element event listeners
     const video = document.getElementById('videoPlayer');
-    
-    video.addEventListener('playing', () => {
-        console.log('▶️ Video started playing');
-    });
+    if (video) {
+        video.addEventListener('playing', () => {
+            console.log('▶️ Video started playing');
+        });
 
-    video.addEventListener('waiting', () => {
-        console.log('⏳ Video buffering...');
-    });
+        video.addEventListener('waiting', () => {
+            console.log('⏳ Video buffering...');
+        });
 
-    video.addEventListener('error', (e) => {
-        console.error('❌ Video error:', video.error);
-    });
+        video.addEventListener('error', (e) => {
+            console.error('❌ Video error:', video.error);
+        });
+    }
 });
 
 function handleFullscreenChange() {

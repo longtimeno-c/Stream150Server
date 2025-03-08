@@ -105,44 +105,79 @@
             const isProduction = window.location.hostname === 'watch.stream150.com';
             const protocol = isProduction ? 'https' : 'http';
             const wsProtocol = isProduction ? 'wss' : 'ws';
+            const host = isProduction ? 'watch.stream150.com' : 'localhost';
             
             // Configure stream URL
-            const hlsUrl = `${protocol}://watch.stream150.com:8000/live/StreamtoME/index.m3u8`;
+            const hlsUrl = `${protocol}://${host}:8000/live/StreamtoME/index.m3u8`;
             
             // Make this variable global so other scripts can access it
-            window.WS_URL = `${wsProtocol}://watch.stream150.com:3001`;
+            window.WS_URL = `${wsProtocol}://${host}:3001`;
             
             let hls = null;
 
             if (Hls.isSupported()) {
                 console.log('✅ HLS.js is supported');
                 hls = new Hls({
-                    debug: true, // Temporarily enable debug for troubleshooting
+                    debug: false,
                     enableWorker: true,
                     lowLatencyMode: true,
                     backBufferLength: 90,
                     xhrSetup: function(xhr, url) {
-                        // Handle potential CORS issues
                         xhr.withCredentials = false;
                     },
-                    // Add retry configuration
-                    manifestLoadingMaxRetry: 6,
-                    manifestLoadingRetryDelay: 1000,
-                    manifestLoadingMaxRetryTimeout: 10000,
-                    levelLoadingMaxRetry: 6,
-                    levelLoadingRetryDelay: 1000,
-                    levelLoadingMaxRetryTimeout: 10000
+                    // Updated configuration format
+                    manifestLoadPolicy: {
+                        default: {
+                            maxTimeToFirstByteMs: null,
+                            maxLoadTimeMs: 20000,
+                            timeoutRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            },
+                            errorRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            }
+                        }
+                    },
+                    playlistLoadPolicy: {
+                        default: {
+                            maxTimeToFirstByteMs: 10000,
+                            maxLoadTimeMs: 20000,
+                            timeoutRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            },
+                            errorRetry: {
+                                maxNumRetry: 6,
+                                retryDelayMs: 1000,
+                                maxRetryDelayMs: 10000
+                            }
+                        }
+                    }
                 });
+
+                // Remove the source element to prevent conflicts
+                const sourceElement = video.querySelector('source');
+                if (sourceElement) {
+                    video.removeChild(sourceElement);
+                }
+                video.src = '';
 
                 console.log('🔄 Loading stream source:', hlsUrl);
 
-                // Add manifest loading error handler
                 hls.on(Hls.Events.MANIFEST_LOADING, () => {
-                    console.log('📡 Attempting to load HLS manifest...');
+                    console.log('�� Attempting to load HLS manifest...');
                 });
 
                 hls.loadSource(hlsUrl);
                 hls.attachMedia(video);
+
+                // Make hls instance available globally for quality selection
+                window.hls = hls;
 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     console.log('✅ HLS manifest parsed, attempting playback');
