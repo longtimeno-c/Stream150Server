@@ -1,70 +1,73 @@
+console.log('🔍 UI.js loaded and executing');
+
 let hls = null;
 let currentStream = null;
 
 function initializeStream() {
+    console.log('🔍 initializeStream called');
+    console.log('🎥 Initializing stream player...');
     const video = document.getElementById('videoPlayer');
+    const placeholder = document.getElementById('videoPlaceholder');
     
-    // Destroy existing HLS instance if it exists
-    if (hls) {
-        hls.destroy();
-        hls = null;
-    }
-
-    // Clear video source
-    video.src = '';
+    // Use window.location.hostname instead of localhost
+    const serverHost = window.location.hostname;
+    const hlsUrl = `http://${serverHost}:8000/live/StreamtoME/index.m3u8`;
+    const flvUrl = `http://${serverHost}:8000/live/StreamtoME.flv`;
+    
+    // Show video, hide placeholder
+    video.style.display = 'block';
+    placeholder.style.display = 'none';
     
     if (Hls.isSupported()) {
+        console.log('✅ HLS.js is supported');
+        if (hls) {
+            console.log('♻️ Destroying existing HLS instance');
+            hls.destroy();
+        }
+        
         hls = new Hls({
             debug: false,
-            capLevelToPlayerSize: true,
-            autoLevelCapping: -1,
-            startLevel: -1, // Auto quality by default
-            // Add some additional config for better performance
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            manifestLoadingTimeOut: 10000,
-            manifestLoadingMaxRetry: 3,
-            manifestLoadingRetryDelay: 500
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90,
+            // Add retry configuration
+            manifestLoadingMaxRetry: 6,
+            manifestLoadingRetryDelay: 1000,
+            manifestLoadingMaxRetryTimeout: 10000,
+            levelLoadingMaxRetry: 6,
+            levelLoadingRetryDelay: 1000,
+            levelLoadingMaxRetryTimeout: 10000
         });
 
-        const streamUrl = `http://${window.location.hostname}:8000/live/StreamtoME/index.m3u8`;
-        currentStream = streamUrl;
+        console.log('🔄 Loading stream source:', hlsUrl);
         
-        hls.loadSource(streamUrl);
+        // Add manifest loading error handler
+        hls.on(Hls.Events.MANIFEST_LOADING, () => {
+            console.log('📡 Attempting to load HLS manifest...');
+        });
+
+        hls.loadSource(hlsUrl);
         hls.attachMedia(video);
         
-        hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
-            console.log('Stream manifest loaded, found ' + data.levels.length + ' quality levels');
-            
-            const qualitySelect = document.getElementById('qualitySelect');
-            qualitySelect.innerHTML = '<option value="auto">Auto</option>';
-            
-            // Add available qualities
-            data.levels.forEach((level, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.text = `${level.height}p`;
-                qualitySelect.appendChild(option);
-            });
-            
-            video.play().catch(function(error) {
-                console.log("Play failed:", error);
-            });
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log('✅ HLS manifest parsed, attempting playback');
+            video.play().catch(e => console.log('❌ Autoplay failed:', e));
         });
 
-        hls.on(Hls.Events.ERROR, function(event, data) {
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error('❌ HLS Error:', data);
             if (data.fatal) {
                 switch(data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.log('Network error, trying to recover...');
+                        console.log('🔄 Network error, attempting recovery...');
                         hls.startLoad();
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.log('Media error, trying to recover...');
+                        console.log('🔄 Media error, attempting recovery...');
                         hls.recoverMediaError();
                         break;
                     default:
-                        console.error('Fatal error:', data);
+                        console.log('💀 Fatal error, destroying player...');
                         destroyStream();
                         break;
                 }
@@ -73,26 +76,55 @@ function initializeStream() {
     }
     // For Safari and iOS
     else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        const streamUrl = `http://${window.location.hostname}:8000/live/StreamtoME/index.m3u8`;
-        video.src = streamUrl;
-        currentStream = streamUrl;
-        
-        video.addEventListener('loadedmetadata', function() {
-            video.play().catch(function(error) {
-                console.log("Play failed:", error);
-            });
+        console.log('📱 Using native HLS support');
+        video.src = hlsUrl;
+        video.addEventListener('loadedmetadata', () => {
+            video.play().catch(e => console.log('❌ Autoplay failed:', e));
         });
+    }
+
+    if (flvjs.isSupported()) {
+        const flvPlayer = flvjs.createPlayer({
+            type: 'flv',
+            url: flvUrl,
+            isLive: true,
+            hasAudio: true,
+            hasVideo: true,
+            enableStashBuffer: false,
+            // Add retry configuration
+            cors: true,
+            withCredentials: false,
+            timeout: 5000,
+            seekRetry: 5,
+            maxRetryCount: 3
+        });
+        
+        flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+            console.error('FLV Player Error:', errorType, errorDetail);
+            flvPlayer.destroy();
+        });
+
+        flvPlayer.attachMediaElement(video);
+        flvPlayer.load();
+        flvPlayer.play();
     }
 }
 
 function destroyStream() {
+    console.log('🛑 Destroying stream player...');
     if (hls) {
         hls.destroy();
         hls = null;
     }
     const video = document.getElementById('videoPlayer');
     video.src = '';
-    currentStream = null;
+    
+    // Show placeholder if it exists
+    const placeholder = document.getElementById('videoPlaceholder');
+    if (placeholder) {
+        video.style.display = 'none';
+        placeholder.style.display = 'block';
+    }
 }
 
 function toggleFullscreen() {
@@ -155,26 +187,18 @@ function toggleChat() {
     }
 }
 
-function updateStreamStatus(data) {
+function updateStreamStatus(status) {
+    console.log(`🔄 Stream status update: ${status}`);
     const statusElement = document.getElementById('status');
     const statusText = document.getElementById('statusText');
-    const videoPlaceholder = document.getElementById('videoPlaceholder');
-    const videoPlayer = document.getElementById('videoPlayer');
     
-    statusText.textContent = data.status;
-    statusElement.className = 'status-indicator ' + 
-        (data.status === 'LIVE' ? 'live' : 'offline');
-        
-    if (data.status === 'LIVE') {
-        videoPlaceholder.style.display = 'none';
-        videoPlayer.style.display = 'block';
-        videoPlaceholder.pause();
-        initializeStream();
-    } else {
-        destroyStream();
-        videoPlaceholder.style.display = 'block';
-        videoPlayer.style.display = 'none';
-        videoPlaceholder.play();
+    statusText.textContent = status;
+    statusElement.className = 'status-indicator ' + (status === 'LIVE' ? 'online' : 'offline');
+    
+    // Update viewer count display
+    const viewerCount = document.getElementById('viewerCount');
+    if (viewerCount) {
+        viewerCount.style.display = status === 'LIVE' ? 'block' : 'none';
     }
 }
 
@@ -204,6 +228,22 @@ function loadChatHistory(messages) {
 
 // Add event listeners
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🔍 DOM Content Loaded - initializing UI components');
+    
+    // Test HLS.js availability
+    if (typeof Hls !== 'undefined') {
+        console.log('✅ HLS.js is available');
+    } else {
+        console.error('❌ HLS.js is not loaded!');
+    }
+    
+    // Test flv.js availability
+    if (typeof flvjs !== 'undefined') {
+        console.log('✅ flv.js is available');
+    } else {
+        console.error('❌ flv.js is not loaded!');
+    }
+
     const chatBox = document.getElementById('chatBox');
     const mobileChatBox = document.getElementById('mobileChatBox');
     const chatInput = document.getElementById('chatInput');
@@ -254,6 +294,60 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    // Update WebSocket connection to use the correct port and path
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.hostname}:3001`;
+    const ws = new WebSocket(wsUrl);
+    console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+
+    ws.onopen = function() {
+        console.log('✅ WebSocket connection established');
+    };
+
+    ws.onmessage = function(event) {
+        console.log('📨 Received WebSocket message:', event.data);
+        const data = JSON.parse(event.data);
+        
+        switch(data.type) {
+            case 'STREAM_STATUS':
+                handleStreamStatusUpdate(data.status);
+                break;
+            
+            case 'VIEWER_COUNT':
+                console.log('👥 Viewer count update:', data.viewers);
+                updateViewerCount(data.viewers);
+                break;
+            
+            case 'CHAT_HISTORY':
+                console.log('📜 Received chat history');
+                loadChatHistory(data.messages);
+                break;
+        }
+    };
+
+    ws.onerror = function(error) {
+        console.error('❌ WebSocket error:', error);
+    };
+
+    ws.onclose = function() {
+        console.log('🔌 WebSocket connection closed');
+    };
+
+    // Add video element event listeners
+    const video = document.getElementById('videoPlayer');
+    
+    video.addEventListener('playing', () => {
+        console.log('▶️ Video started playing');
+    });
+
+    video.addEventListener('waiting', () => {
+        console.log('⏳ Video buffering...');
+    });
+
+    video.addEventListener('error', (e) => {
+        console.error('❌ Video error:', video.error);
+    });
 });
 
 function handleFullscreenChange() {
@@ -270,5 +364,130 @@ function handleFullscreenChange() {
     } else {
         // Entered fullscreen
         player.classList.add('fullscreen');
+    }
+}
+
+// Add HLS handling to check stream availability and initialize player
+const videoPlaceholder = document.getElementById('videoPlaceholder');
+
+function initHLS(streamUrl) {
+    if (Hls.isSupported()) {
+        if (hls) {
+            hls.destroy();
+        }
+        
+        hls = new Hls({
+            debug: true, // Enable debug logs
+            enableWorker: true,
+            lowLatencyMode: true,
+        });
+
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+            console.log('HLS: Media attached');
+        });
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log('HLS: Manifest parsed, attempting to play');
+            video.style.display = 'block';
+            videoPlaceholder.style.display = 'none';
+            video.play().catch(e => console.warn('Auto-play failed:', e));
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.warn('HLS Error:', data);
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.log('HLS: Fatal network error... retrying');
+                        hls.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log('HLS: Fatal media error... retrying');
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        console.log('HLS: Fatal error... destroying');
+                        hls.destroy();
+                        break;
+                }
+            }
+        });
+
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // For Safari
+        video.src = streamUrl;
+        video.addEventListener('loadedmetadata', () => {
+            video.style.display = 'block';
+            videoPlaceholder.style.display = 'none';
+            video.play().catch(e => console.warn('Auto-play failed:', e));
+        });
+    }
+}
+
+// Update checkStreamAvailability to initialize HLS when stream is available
+function checkStreamAvailability(url) {
+    return fetch(url, { method: 'HEAD' })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Stream not available: ${response.status}`);
+            }
+            console.log('Stream available, initializing HLS');
+            initHLS(url);
+            return true;
+        })
+        .catch(error => {
+            console.warn('Stream availability check failed:', error);
+            video.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+            return false;
+        });
+}
+
+// Add WebSocket handler for stream status
+socket.addEventListener('message', (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'STREAM_STATUS') {
+        const statusElement = document.getElementById('status');
+        const statusTextElement = document.getElementById('statusText');
+        
+        if (data.status === 'LIVE') {
+            statusElement.className = 'status-indicator live';
+            statusTextElement.textContent = 'LIVE';
+            // Check stream when we get LIVE status
+            checkStreamAvailability('http://localhost:8000/live/StreamtoME/index.m3u8');
+        } else {
+            statusElement.className = 'status-indicator offline';
+            statusTextElement.textContent = 'OFFLINE';
+            video.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+        }
+    }
+});
+
+// Modify the WebSocket message handler to include stream availability check
+function handleStreamStatusUpdate(status) {
+    console.log('🎥 Stream status update:', status);
+    updateStreamStatus(status);
+    
+    if (status === 'LIVE') {
+        const serverHost = window.location.hostname;
+        const hlsUrl = `http://${serverHost}:8000/live/StreamtoME/index.m3u8`;
+        
+        // Check stream availability before initializing
+        checkStreamAvailability(hlsUrl)
+            .then(isAvailable => {
+                if (isAvailable) {
+                    console.log('🟢 Stream is available, initializing player...');
+                    initializeStream();
+                } else {
+                    console.log('🟡 Stream not ready yet, retrying in 5 seconds...');
+                    setTimeout(() => handleStreamStatusUpdate(status), 5000);
+                }
+            });
+    } else {
+        console.log('🔴 Stream is offline');
+        destroyStream();
     }
 }

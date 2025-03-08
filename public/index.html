@@ -17,10 +17,8 @@
         <div class="video-container">
             <div class="video-player">
                 <video id="videoPlayer" class="video-element" playsinline controls>
+                    <source src="http://localhost:8000/live/StreamtoME/index.m3u8" type="application/x-mpegURL">
                     Your browser does not support the video element.
-                </video>
-                <video id="videoPlaceholder" class="video-placeholder" playsinline loop muted autoplay>
-                    Waiting...
                 </video>
                 <div class="status-bar">
                     <div id="status" class="status-indicator offline">
@@ -95,74 +93,49 @@
         </div>
     </div>
 
-    <script src="js/websocket.js"></script>
-    <script src="js/chat.js"></script>
-    <script src="js/donations.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="/js/countdown.js"></script>
-
     <script>
-        const video = document.getElementById('videoPlayer');
-        const placeholder = document.getElementById('videoPlaceholder');
-        const videoSrc = 'http://localhost:8000/live/StreamtoME/index.m3u8';
-        let hls;
-    
-        function initHLS() {
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('videoPlayer');
+            const source = 'http://localhost:8000/live/StreamtoME/index.m3u8';
+            
             if (Hls.isSupported()) {
-                hls = new Hls({
-                    debug: true,
+                const hls = new Hls({
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60,
                     enableWorker: true,
                     lowLatencyMode: true,
                     backBufferLength: 90
                 });
-    
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    console.log('HLS manifest loaded');
-                    updateStreamStatus('LIVE');
-                    video.play().catch(e => console.log('Autoplay failed:', e));
-                    video.style.display = 'block';
-                    placeholder.style.display = 'none';
-                });
-    
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    console.log('HLS Error:', data);
-                    if (data.fatal) {
-                        updateStreamStatus('OFFLINE');
-                        hls.destroy();
-                        hls = null;
-                        video.style.display = 'none';
-                        placeholder.style.display = 'block';
-                        setTimeout(() => initHLS(), 2000);
-                    }
-                });
-    
-                hls.loadSource(videoSrc);
+                hls.loadSource(source);
                 hls.attachMedia(video);
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = videoSrc;
-                video.addEventListener('loadedmetadata', () => {
-                    updateStreamStatus('LIVE');
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+
+                // Log stream information
+                hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {
+                    console.log('Stream details:', {
+                        fps: data.details.targetduration,
+                        fragments: data.details.fragments,
+                        live: data.details.live
+                    });
+                });
+            }
+            // For browsers that natively support HLS
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = source;
+                video.addEventListener('loadedmetadata', function() {
                     video.play();
                 });
             }
-        }
-    
-        function updateStreamStatus(status) {
-            const statusElement = document.getElementById('status');
-            const statusText = document.getElementById('statusText');
-            
-            statusText.textContent = status;
-            if (status === 'LIVE') {
-                statusElement.classList.remove('offline');
-                statusElement.classList.add('online');
-            } else {
-                statusElement.classList.remove('online');
-                statusElement.classList.add('offline');
-            }
-        }
-    
-        // Initial setup
-        initHLS();
+        });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="js/websocket.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/donations.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/countdown.js"></script>
 </body>
 </html>

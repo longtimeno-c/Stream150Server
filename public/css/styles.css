@@ -59,10 +59,7 @@ body {
     left: 0;
     object-fit: contain;
     background: #000;
-}
-
-.video-element {
-    display: none; /* Will be shown when stream starts */
+    display: block;
 }
 
 .video-placeholder {
@@ -73,6 +70,7 @@ body {
     left: 0;
     object-fit: contain;
     background: #000;
+    display: none;
 }
 
 .status-bar {

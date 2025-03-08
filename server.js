@@ -96,9 +96,10 @@ app.use((req, res) => {
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
+    console.log('👤 New WebSocket client connected');
     viewerCount++;
     
-    // Send initial status
+    // Send initial stream status immediately
     ws.send(JSON.stringify({ 
         type: 'STREAM_STATUS', 
         status: isStreaming ? 'LIVE' : 'OFFLINE',
@@ -151,6 +152,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
+        console.log('👋 WebSocket client disconnected');
         clearInterval(pingInterval);
         viewerCount--;
         broadcast({ 
@@ -165,15 +167,16 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Update broadcast function to be more robust
+// Update broadcast function with logging
 function broadcast(data) {
+    console.log('📢 Broadcasting:', data);
     const message = JSON.stringify(data);
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             try {
                 client.send(message);
             } catch (err) {
-                console.error('Error broadcasting message:', err);
+                console.error('❌ Error broadcasting message:', err);
             }
         }
     });
@@ -220,9 +223,8 @@ process.on('uncaughtException', (err) => {
 });
 
 // Configure Node-Media-Server
-const nmsConfig = {
+const config = {
     rtmp: {
-        host: 'localhost',
         port: 1935,
         chunk_size: 60000,
         gop_cache: true,
@@ -230,33 +232,26 @@ const nmsConfig = {
         ping_timeout: 60
     },
     http: {
-        host: 'localhost',
         port: 8000,
         allow_origin: '*',
-        mediaroot: './media',
-        paths: {
-            '/live': {
-                allow_origin: '*'
-            }
-        }
+        mediaroot: './media'
     },
     trans: {
-        ffmpeg: 'ffmpeg',
+        ffmpeg: process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg',
         tasks: [
             {
                 app: 'live',
                 hls: true,
-                hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments+omit_endlist]',
-                hlsKeep: true,
+                hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
+                hlsKeep: false, // Don't keep HLS segments on disk
                 dash: false,
-                options: '-c:v copy -c:a aac -ar 44100 -b:a 128k' // Direct copy video, transcode audio only
             }
         ]
     }
 };
 
 // Create RTMP server instance
-const nms = new NodeMediaServer(nmsConfig);
+const nms = new NodeMediaServer(config);
 
 // Extend nms with EventEmitter if needed (fallback)
 if (typeof nms.on !== 'function') {
@@ -264,40 +259,65 @@ if (typeof nms.on !== 'function') {
     EventEmitter.call(nms);
 }
 
-console.log('NMS instance before run:', nms);
-
-// Start the server
-nms.httpServer.run();
-nms.rtmpServer.run();
+//console.log('NMS instance before run:', nms);
+nms.run()
 console.log('NMS started (HTTP and RTMP servers running)');
 
-// Attach event listeners AFTER running the server
+// Add more detailed logging for RTMP events
+nms.on('preConnect', (id, args) => {
+    console.log('🔄 [RTMP] Client attempting to connect:', id);
+});
+
+nms.on('postConnect', (id, args) => {
+    console.log('✅ [RTMP] Client connected:', id);
+});
+
 nms.on('prePublish', (id, StreamPath, args) => {
-    //console.log(`[NodeEvent on prePublish] id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
+    console.log('🎥 [RTMP] Stream starting:', {
+        id: id,
+        path: StreamPath,
+        args: args
+    });
     let stream_key = StreamPath.split('/')[2];
-    let session = nms.getSession(id);
 
     if (stream_key === STREAM_KEY) {
+        console.log('✅ [RTMP] Stream key validated');
+        console.log('📡 [HLS] HLS stream should be available at:', `http://localhost:8000/live/${stream_key}/index.m3u8`);
         isStreaming = true;
         broadcast({ 
             type: 'STREAM_STATUS', 
             status: 'LIVE',
             viewers: viewerCount 
         });
-        session.publishSuccess(); // Allow the stream to proceed
-    } else {
-        session.reject(); // Reject unauthorized streams
-        console.log(`Rejected stream with key: ${stream_key}`);
+        return;
     }
+
+    throw new Error('Invalid stream key');
 });
 
 nms.on('donePublish', (id, StreamPath, args) => {
-    //console.log(`[NodeEvent on donePublish] id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
+    console.log('🛑 [RTMP] Stream ended:', {
+        id: id,
+        path: StreamPath
+    });
     isStreaming = false;
     broadcast({ 
         type: 'STREAM_STATUS', 
         status: 'OFFLINE',
         viewers: viewerCount 
+    });
+});
+
+// Add logging for stream chunks being generated
+nms.on('postHLSSegment', (id, level, sn, duration, start, end) => {
+    console.log('📼 [HLS] New segment generated:', {
+        id,
+        level,
+        segmentNumber: sn,
+        duration,
+        start,
+        end,
+        path: `live/StreamtoME/${sn}.ts`
     });
 });
 
