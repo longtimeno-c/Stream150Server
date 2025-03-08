@@ -3,6 +3,31 @@ console.log('🔍 UI.js loaded and executing');
 let hls = null;
 let currentStream = null;
 
+// Function to detect mobile devices
+function isMobileDevice() {
+    return (window.innerWidth <= 768) || 
+           (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+}
+
+// Function to adjust UI for mobile devices
+function adjustForMobile() {
+    if (isMobileDevice()) {
+        const videoPlayer = document.querySelector('.video-player');
+        const controls = document.querySelector('.controls');
+        
+        // Move controls outside of video-player for mobile
+        if (videoPlayer && controls && videoPlayer.contains(controls)) {
+            const videoContainer = document.querySelector('.video-container');
+            videoPlayer.removeChild(controls);
+            videoContainer.appendChild(controls);
+        }
+    }
+}
+
+// Call adjustForMobile on page load and resize
+document.addEventListener('DOMContentLoaded', adjustForMobile);
+window.addEventListener('resize', adjustForMobile);
+
 function getStreamUrls(useLocalhost = false) {
     const host = useLocalhost ? 'localhost' : window.location.hostname;
     const protocol = window.location.protocol;
@@ -187,6 +212,12 @@ function destroyStream() {
 }
 
 function toggleFullscreen() {
+    // Skip for mobile devices as we've hidden the button
+    if (isMobileDevice()) {
+        console.log('Fullscreen toggle ignored on mobile device');
+        return;
+    }
+    
     const player = document.querySelector('.video-player');
     
     if (!document.fullscreenElement && 
@@ -403,9 +434,25 @@ function handleFullscreenChange() {
         if (screen.orientation && screen.orientation.unlock) {
             screen.orientation.unlock();
         }
+        
+        // Re-adjust for mobile when exiting fullscreen
+        if (isMobileDevice()) {
+            setTimeout(adjustForMobile, 100); // Small delay to ensure DOM is updated
+        }
     } else {
         // Entered fullscreen
         player.classList.add('fullscreen');
+        
+        // When in fullscreen on mobile, move controls back inside player
+        if (isMobileDevice()) {
+            const controls = document.querySelector('.controls');
+            const videoContainer = document.querySelector('.video-container');
+            
+            if (controls && videoContainer.contains(controls) && !player.contains(controls)) {
+                videoContainer.removeChild(controls);
+                player.appendChild(controls);
+            }
+        }
     }
 }
 
@@ -467,4 +514,34 @@ function showAutoplayPrompt(video) {
         prompt.remove();
         document.documentElement.setAttribute('data-user-interacted', 'true');
     });
+}
+
+// Function to jump to live stream
+function jumpToLive() {
+    const video = document.getElementById('videoPlayer');
+    const liveBtn = document.querySelector('.live-btn');
+    
+    // If using HLS.js
+    if (window.hls) {
+        // Jump to live edge
+        window.hls.liveSyncPosition = null;
+        window.hls.currentLevel = -1; // Auto quality
+        
+        // Start playing if paused
+        if (video.paused) {
+            video.play().catch(e => console.error('Play failed:', e));
+        }
+        
+        // Highlight the live button
+        if (liveBtn) {
+            liveBtn.classList.remove('inactive');
+            // Add a brief animation
+            liveBtn.classList.add('pulse');
+            setTimeout(() => {
+                liveBtn.classList.remove('pulse');
+            }, 1000);
+        }
+        
+        console.log('Jumped to live edge of stream');
+    }
 }
