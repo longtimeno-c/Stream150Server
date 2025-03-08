@@ -107,10 +107,120 @@
             align-items: center;
         }
 
+        .fullscreen-btn {
+            width: 40px;
+            height: 40px;
+            background: #ffffff;
+            border-radius: 4px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .fullscreen-btn:hover {
+            background: #f0f0f0;
+        }
+
         .donation-buttons {
             padding: 0 15px 15px;
             display: flex;
             gap: 15px;
+        }
+
+        .donation-buttons .paypal-btn {
+            background: #0070BA;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+        }
+
+        .donation-buttons .paypal-btn:hover {
+            background: #005EA6;
+        }
+
+        .donation-buttons .tangia-btn {
+            background: #FF6200;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+        }
+
+        .donation-buttons .tangia-btn:hover {
+            background: #E55B00;
+        }
+
+        .donation-buttons .btn-logo {
+            height: 20px;
+            width: auto;
+        }
+
+        .donation-tracker {
+            padding: 15px;
+            background: #2d2d2d;
+        }
+
+        .donation-tracker h2 {
+            text-align: center;
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            margin: 0.5rem 0;
+        }
+
+        .donation-tracker p {
+            text-align: center;
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            margin: 0.5rem 0;
+        }
+
+        #progress-container {
+            position: relative;
+            width: 100%;
+            height: clamp(20px, 6vw, 40px);
+            background-color: #333;
+            border-radius: 8px;
+            margin: clamp(10px, 3vw, 20px) 0;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: #4caf50;
+            border-radius: 8px;
+            text-align: right;
+            line-height: clamp(20px, 6vw, 40px);
+            padding-right: 0.4rem;
+            box-sizing: border-box;
+            color: white;
+            font-weight: bold;
+            font-size: clamp(0.7rem, 2.5vw, 1rem);
+            transition: width 0.5s ease-in-out;
+        }
+
+        .milestone {
+            position: absolute;
+            top: 100%;
+            width: 1px;
+            height: clamp(10px, 3vw, 20px);
+            background-color: #ffffff;
+        }
+
+        .milestone-label {
+            position: absolute;
+            top: calc(100% + clamp(10px, 3vw, 20px));
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: clamp(0.6rem, 2vw, 0.875rem);
+            white-space: nowrap;
+        }
+
+        .stream-time {
+            font-size: clamp(0.5rem, 1.5vw, 0.75rem);
+            color: #aaaaaa;
+            display: block;
         }
 
         .chat-container {
@@ -175,14 +285,6 @@
             transform: translateY(-1px);
         }
 
-        .donation-buttons button {
-            background: #28a745;
-        }
-
-        .donation-buttons button:hover {
-            background: #218838;
-        }
-
         h3 {
             margin-bottom: 15px;
             color: #fff;
@@ -209,15 +311,32 @@
                     </div>
                 </div>
                 <div class="controls">
-                    <button onclick="toggleFullscreen()">Full Screen</button>
+                    <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Full Screen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#212121" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m-6 18v-3m0-12V3m-9 18h3M3 8v8a2 2 0 0 0 2 2h3m10-2h3a2 2 0 0 0 2-2v-3"/>
+                        </svg>
+                    </button>
                     <select id="qualitySelect" onchange="changeQuality()">
                         <option value="720p">720p</option>
                         <option value="1080p">1080p</option>
                     </select>
                 </div>
                 <div class="donation-buttons">
-                    <button onclick="window.open('https://tangia.co/donate')">Tangia Donation</button>
-                    <button onclick="window.open('https://paypal.me/donate')">PayPal Donation</button>
+                    <button class="tangia-btn" onclick="window.open('https://tangia.co/donate')">
+                        <img src="https://via.placeholder.com/20x20?text=T" alt="Tangia Logo" class="btn-logo">
+                        Tangia Donation
+                    </button>
+                    <button class="paypal-btn" onclick="window.open('https://paypal.me/donate')">
+                        <img src="https://via.placeholder.com/20x20?text=P" alt="PayPal Logo" class="btn-logo">
+                        PayPal Donation
+                    </button>
+                </div>
+                <div class="donation-tracker">
+                    <h2>Stream Donation Progress</h2>
+                    <p id="current-donations">Loading donations...</p>
+                    <div id="progress-container">
+                        <div id="progress-bar">0%</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -239,6 +358,17 @@
         const videoPlaceholder = document.getElementById('videoPlaceholder');
         const chatBox = document.getElementById('chatBox');
         const chatInput = document.getElementById('chatInput');
+
+        // Donation tracker variables
+        const paypalPoolUrl = 'https://www.paypal.com/pool/9c2agpViJU?sr=ancr';
+        const totalGoal = 1000;
+        const manualDonationAmount = 0;
+        const milestones = [
+            { amount: 100, hours: 48 },
+            { amount: 200, hours: 75 },
+            { amount: 500, hours: 100 },
+            { amount: 700, hours: 150 }
+        ];
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
@@ -278,7 +408,6 @@
 
         function changeQuality() {
             const quality = document.getElementById('qualitySelect').value;
-            // Add your quality change logic here
             console.log('Quality changed to:', quality);
         }
 
@@ -293,12 +422,73 @@
             }
         }
 
-        // Press Enter to send chat
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendChat();
+        // Donation tracker functions
+        function createMilestoneMarkers() {
+            const container = document.getElementById('progress-container');
+            milestones.forEach(milestone => {
+                const position = (milestone.amount / totalGoal) * 100;
+                const milestoneLine = document.createElement('div');
+                milestoneLine.className = 'milestone';
+                milestoneLine.style.left = position + '%';
+                container.appendChild(milestoneLine);
+
+                const label = document.createElement('div');
+                label.className = 'milestone-label';
+                label.style.left = position + '%';
+                label.innerHTML = `£${milestone.amount}<br><span class="stream-time">${milestone.hours} hrs</span>`;
+                container.appendChild(label);
+            });
+        }
+
+        async function fetchDonationAmount() {
+            try {
+                const response = await fetch(paypalPoolUrl);
+                const text = await response.text();
+                const donationMatch = text.match(/"currencyAmount":"([0-9.]+)"/);
+                return donationMatch && donationMatch[1] ? parseFloat(donationMatch[1]) : manualDonationAmount;
+            } catch (error) {
+                console.error('Error fetching donation data:', error);
+                return manualDonationAmount;
             }
+        }
+
+        function calculateStreamLength(donationAmount) {
+            let streamLength = 48;
+            for (const milestone of milestones) {
+                if (donationAmount >= milestone.amount) {
+                    streamLength = milestone.hours;
+                }
+            }
+            return streamLength;
+        }
+
+        async function updateDonationUI() {
+            const donationAmount = await fetchDonationAmount();
+            const source = (donationAmount === manualDonationAmount && donationAmount !== 0) 
+                ? ' (Manual)' 
+                : ' (PayPal)';
+                
+            document.getElementById('current-donations').innerText = 
+                `Current Donations: £${donationAmount.toFixed(2)}${source}`;
+
+            const progressPercentage = Math.min((donationAmount / totalGoal) * 100, 100);
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = progressPercentage + '%';
+            progressBar.innerText = `${progressPercentage.toFixed(1)}%`;
+
+            document.querySelectorAll('.milestone-label').forEach(label => {
+                const milestoneAmount = parseInt(label.innerText.replace('£', ''));
+                label.style.color = donationAmount >= milestoneAmount ? '#4caf50' : '#ffffff';
+            });
+        }
+
+        // Initialize
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChat();
         });
+        createMilestoneMarkers();
+        setInterval(updateDonationUI, 30000);
+        updateDonationUI();
     </script>
 </body>
 </html>
