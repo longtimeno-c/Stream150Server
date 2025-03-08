@@ -644,27 +644,22 @@
         };
 
         function addChatMessage(message, platform, username) {
-            // Create message element
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${platform}`;
             
-            // Add platform indicator
             const platformIndicator = document.createElement('span');
             platformIndicator.className = `platform-indicator ${platform}`;
             platformIndicator.textContent = platform.charAt(0).toUpperCase() + platform.slice(1);
             
-            // Add username
             const usernameSpan = document.createElement('span');
             usernameSpan.className = 'chat-username';
-            usernameSpan.textContent = username + ': ';
+            usernameSpan.textContent = username;
             usernameSpan.style.color = getColorFromUsername(username);
             
-            // Add message text
             const messageSpan = document.createElement('span');
             messageSpan.className = 'chat-text';
-            messageSpan.textContent = message;
+            messageSpan.textContent = `: ${message}`;
             
-            // Assemble message
             messageDiv.appendChild(platformIndicator);
             messageDiv.appendChild(usernameSpan);
             messageDiv.appendChild(messageSpan);
@@ -673,9 +668,18 @@
             chatBox.appendChild(messageDiv.cloneNode(true));
             mobileChatBox.appendChild(messageDiv);
             
-            // Scroll to bottom
-            chatBox.scrollTop = chatBox.scrollHeight;
-            mobileChatBox.scrollTop = mobileChatBox.scrollHeight;
+            // Keep only last 200 messages in DOM to prevent performance issues
+            while (chatBox.children.length > 200) {
+                chatBox.removeChild(chatBox.firstChild);
+                mobileChatBox.removeChild(mobileChatBox.firstChild);
+            }
+            
+            // Scroll to bottom if near bottom
+            const isNearBottom = chatBox.scrollHeight - chatBox.clientHeight - chatBox.scrollTop < 100;
+            if (isNearBottom) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+                mobileChatBox.scrollTop = mobileChatBox.scrollHeight;
+            }
             
             // Add to chat history
             addToChatHistory(message, platform, username);
@@ -824,6 +828,19 @@
                 label.style.color = donationAmount >= milestoneAmount ? '#4caf50' : '#ffffff';
             });
         }
+
+        // Auto-scroll toggle
+        let autoScroll = true;
+        
+        chatBox.addEventListener('scroll', () => {
+            const isNearBottom = chatBox.scrollHeight - chatBox.clientHeight - chatBox.scrollTop < 100;
+            autoScroll = isNearBottom;
+        });
+
+        mobileChatBox.addEventListener('scroll', () => {
+            const isNearBottom = mobileChatBox.scrollHeight - mobileChatBox.clientHeight - mobileChatBox.scrollTop < 100;
+            autoScroll = isNearBottom;
+        });
 
         // Add input event listeners
         chatInput.addEventListener('keypress', (e) => {

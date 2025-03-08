@@ -3,8 +3,11 @@ const http = require('http');
 const WebSocket = require('ws');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs');
 
 const STREAM_KEY = 'StreamtoME';
+const CHAT_HISTORY_FILE = path.join(__dirname, 'chat_history.json');
+const MAX_CHAT_HISTORY = 1000; // Increased for better continuity
 
 const app = express();
 const server = http.createServer(app);
@@ -13,7 +16,38 @@ const wss = new WebSocket.Server({ server });
 let isStreaming = false;
 let viewerCount = 0;
 let chatHistory = [];
-const MAX_CHAT_HISTORY = 100;
+
+// Load chat history from file
+function loadChatHistory() {
+    try {
+        if (fs.existsSync(CHAT_HISTORY_FILE)) {
+            const data = fs.readFileSync(CHAT_HISTORY_FILE, 'utf8');
+            chatHistory = JSON.parse(data);
+            console.log(`Loaded ${chatHistory.length} messages from chat history`);
+            
+            // Clean up old messages if exceeding max
+            if (chatHistory.length > MAX_CHAT_HISTORY) {
+                chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
+                saveChatHistory(); // Save the cleaned up history
+            }
+        }
+    } catch (err) {
+        console.error('Error loading chat history:', err);
+        chatHistory = [];
+    }
+}
+
+// Save chat history to file
+function saveChatHistory() {
+    try {
+        fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(chatHistory, null, 2));
+    } catch (err) {
+        console.error('Error saving chat history:', err);
+    }
+}
+
+// Initialize
+loadChatHistory();
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -21,6 +55,89 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+    viewerCount++;
+    
+    // Send initial status
+    ws.send(JSON.stringify({ 
+        type: 'STREAM_STATUS', 
+        status: isStreaming ? 'LIVE' : 'OFFLINE',
+        viewers: viewerCount 
+    }));
+
+    // Send chat history in chunks to prevent overwhelming the client
+    const chunkSize = 50;
+    for (let i = 0; i < chatHistory.length; i += chunkSize) {
+        const chunk = chatHistory.slice(i, i + chunkSize);
+        chunk.forEach(msg => {
+            ws.send(JSON.stringify(msg));
+        });
+    }
+
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            if (data.type === 'CHAT_MESSAGE') {
+                const chatMessage = {
+                    type: 'CHAT_MESSAGE',
+                    platform: data.platform || 'web',
+                    message: data.message,
+                    username: data.username || 'Anonymous',
+                    timestamp: new Date().toISOString(),
+                    id: Date.now().toString() // Add unique ID for message tracking
+                };
+                
+                // Add to chat history
+                chatHistory.push(chatMessage);
+                
+                // Maintain maximum history size
+                if (chatHistory.length > MAX_CHAT_HISTORY) {
+                    chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY);
+                }
+                
+                // Broadcast to all clients
+                broadcast(chatMessage);
+                
+                // Save periodically (every 10 messages)
+                if (chatHistory.length % 10 === 0) {
+                    saveChatHistory();
+                }
+            }
+        } catch (err) {
+            console.error('Error processing message:', err);
+        }
+    });
+
+    ws.on('close', () => {
+        viewerCount--;
+        broadcast({ 
+            type: 'VIEWER_COUNT', 
+            viewers: viewerCount 
+        });
+    });
+
+    // Handle errors
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+    });
+});
+
+function broadcast(data) {
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            try {
+                client.send(JSON.stringify(data));
+            } catch (err) {
+                console.error('Error broadcasting message:', err);
+            }
+        }
+    });
+}
+
+// Save chat history periodically (every 5 minutes)
+setInterval(saveChatHistory, 5 * 60 * 1000);
 
 app.post('/authenticate', (req, res) => {
     const { name } = req.body;
@@ -37,57 +154,6 @@ app.post('/authenticate', (req, res) => {
     }
 });
 
-wss.on('connection', (ws) => {
-    viewerCount++;
-    ws.send(JSON.stringify({ 
-        type: 'STREAM_STATUS', 
-        status: isStreaming ? 'LIVE' : 'OFFLINE',
-        viewers: viewerCount 
-    }));
-
-    // Send chat history to new connections
-    chatHistory.forEach(chatMsg => {
-        ws.send(JSON.stringify(chatMsg));
-    });
-
-    ws.on('message', (message) => {
-        const data = JSON.parse(message);
-        if (data.type === 'CHAT_MESSAGE') {
-            // Add username if provided
-            const chatMessage = {
-                type: 'CHAT_MESSAGE',
-                platform: data.platform || 'web',
-                message: data.message,
-                username: data.username || 'Anonymous'
-            };
-            
-            // Store in chat history
-            chatHistory.push(chatMessage);
-            if (chatHistory.length > MAX_CHAT_HISTORY) {
-                chatHistory = chatHistory.slice(chatHistory.length - MAX_CHAT_HISTORY);
-            }
-            
-            broadcast(chatMessage);
-        }
-    });
-
-    ws.on('close', () => {
-        viewerCount--;
-        broadcast({ 
-            type: 'VIEWER_COUNT', 
-            viewers: viewerCount 
-        });
-    });
-});
-
-function broadcast(data) {
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
-        }
-    });
-}
-
 app.post('/stream-ended', (req, res) => {
     isStreaming = false;
     broadcast({ 
@@ -96,6 +162,19 @@ app.post('/stream-ended', (req, res) => {
         viewers: viewerCount 
     });
     res.status(200).send('Stream Ended');
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('Saving chat history before exit...');
+    saveChatHistory();
+    process.exit();
+});
+
+// Error handling
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    saveChatHistory(); // Save chat history on crash
 });
 
 server.listen(3001, () => {
