@@ -230,7 +230,7 @@ const nmsConfig = {
         mediaroot: './media'
     },
     trans: {
-        ffmpeg: '/usr/bin/ffmpeg',
+        ffmpeg: 'ffmpeg',
         tasks: [
             {
                 app: 'live',
