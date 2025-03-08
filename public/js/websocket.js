@@ -1,5 +1,11 @@
 // js/websocket.js
-const socket = new WebSocket('ws://localhost:3001');
+const isProduction = window.location.hostname === 'watch.stream150.com';
+const wsProtocol = isProduction ? 'wss' : 'ws';
+const host = isProduction ? 'watch.stream150.com' : 'localhost';
+const wsPort = isProduction ? '' : ':3001';
+const wsUrl = `${wsProtocol}://${host}${wsPort}${isProduction ? '/ws' : ''}`;
+
+const socket = new WebSocket(wsUrl);
 
 socket.onopen = () => {
     console.log('WebSocket connected');

@@ -6,7 +6,6 @@ const path = require('path');
 const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
 const EventEmitter = require('events')
-const https = require('https');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -223,7 +222,7 @@ process.on('uncaughtException', (err) => {
     saveChatHistory();
 });
 
-// Configure Node-Media-Server
+// Update the config to remove HTTPS
 const config = {
     rtmp: {
         port: 1935,
@@ -244,7 +243,7 @@ const config = {
                 app: 'live',
                 hls: true,
                 hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
-                hlsKeep: false, // Don't keep HLS segments on disk
+                hlsKeep: false,
                 dash: false,
             }
         ]
@@ -323,8 +322,12 @@ nms.on('postHLSSegment', (id, level, sn, duration, start, end) => {
 });
 
 server.listen(3001, () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const host = isProduction ? 'watch.stream150.com' : 'localhost';
+    const protocol = isProduction ? 'https' : 'http';
+    
     console.log('Backend server running on:');
-    console.log('- Web: http://localhost:3001');
-    console.log('- RTMP: rtmp://localhost:1935/live');
-    console.log('- HLS: http://localhost:8000/live');
+    console.log(`- Web: ${protocol}://${host}:3001`);
+    console.log(`- RTMP: rtmp://${host}:1935/live`);
+    console.log(`- HLS: ${protocol}://${host}:${isProduction ? '8443' : '8000'}/live`);
 });

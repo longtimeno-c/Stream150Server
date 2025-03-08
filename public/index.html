@@ -101,17 +101,22 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const video = document.getElementById('videoPlayer');
-            // Use HTTP for local development, HTTPS for production
+            // Since Caddy handles HTTPS, we can always use HTTPS in production
             const isProduction = window.location.hostname === 'watch.stream150.com';
             const protocol = isProduction ? 'https' : 'http';
             const wsProtocol = isProduction ? 'wss' : 'ws';
             const host = isProduction ? 'watch.stream150.com' : 'localhost';
+            const port = isProduction ? '' : ':8000';  // No port needed in production due to Caddy
             
-            // Configure stream URL
-            const hlsUrl = `${protocol}://${host}:8000/live/StreamtoME/index.m3u8`;
+            // Configure stream URL (through Caddy's reverse proxy)
+            const hlsUrl = isProduction 
+                ? `${protocol}://${host}/hls/live/StreamtoME/index.m3u8`
+                : `${protocol}://${host}${port}/live/StreamtoME/index.m3u8`;
             
-            // Make this variable global so other scripts can access it
-            window.WS_URL = `${wsProtocol}://${host}:3001`;
+            // WebSocket URL (through Caddy's reverse proxy)
+            window.WS_URL = isProduction
+                ? `${wsProtocol}://${host}/ws`
+                : `${wsProtocol}://${host}:3001`;
             
             let hls = null;
 
