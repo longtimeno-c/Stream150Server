@@ -85,10 +85,94 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
 }));
 
+// Proxy HLS requests to the media server
+app.get('/live/:stream/:file', (req, res) => {
+    const stream = req.params.stream;
+    const file = req.params.file;
+    const hlsUrl = `http://localhost:8000/live/${stream}/${file}`;
+    
+    console.log(`📡 Proxying HLS request to: ${hlsUrl}`);
+    
+    // Set appropriate headers for HLS content
+    if (file.endsWith('.m3u8')) {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    } else if (file.endsWith('.ts')) {
+        res.setHeader('Content-Type', 'video/mp2t');
+    }
+    
+    // Improved proxy implementation with error handling
+    const proxyReq = http.get(hlsUrl, (proxyRes) => {
+        // Copy all headers from the proxied response
+        Object.keys(proxyRes.headers).forEach(key => {
+            res.setHeader(key, proxyRes.headers[key]);
+        });
+        
+        // Set status code
+        res.status(proxyRes.statusCode);
+        
+        // Pipe the response data
+        proxyRes.pipe(res);
+        
+        // Log success
+        console.log(`✅ Successfully proxied HLS request: ${file} (${proxyRes.statusCode})`);
+    });
+    
+    proxyReq.on('error', (err) => {
+        console.error(`❌ Error proxying HLS request for ${file}:`, err);
+        if (!res.headersSent) {
+            res.status(502).send(`Error proxying HLS request: ${err.message}`);
+        }
+    });
+    
+    // Handle client disconnect
+    req.on('close', () => {
+        proxyReq.destroy();
+    });
+});
+
+// Add a catch-all route for HLS segments that might have different patterns
+app.get('/live/:stream/*', (req, res) => {
+    const stream = req.params.stream;
+    const pathParts = req.path.split('/');
+    const file = pathParts[pathParts.length - 1];
+    const hlsUrl = `http://localhost:8000${req.path}`;
+    
+    console.log(`📡 Proxying additional HLS request to: ${hlsUrl}`);
+    
+    // Set appropriate headers based on file extension
+    if (file.endsWith('.m3u8')) {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    } else if (file.endsWith('.ts')) {
+        res.setHeader('Content-Type', 'video/mp2t');
+    }
+    
+    // Proxy the request
+    const proxyReq = http.get(hlsUrl, (proxyRes) => {
+        Object.keys(proxyRes.headers).forEach(key => {
+            res.setHeader(key, proxyRes.headers[key]);
+        });
+        res.status(proxyRes.statusCode);
+        proxyRes.pipe(res);
+    });
+    
+    proxyReq.on('error', (err) => {
+        console.error(`❌ Error proxying additional HLS request:`, err);
+        if (!res.headersSent) {
+            res.status(502).send(`Error proxying request: ${err.message}`);
+        }
+    });
+    
+    req.on('close', () => {
+        proxyReq.destroy();
+    });
+});
+
+// Then your existing routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// This should be the LAST route
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -322,24 +406,6 @@ nms.on('postHLSSegment', (id, level, sn, duration, start, end) => {
         start,
         end,
         path: `live/StreamtoME/${sn}.ts`
-    });
-});
-
-// Proxy HLS requests to the media server
-app.get('/live/:stream/:file', (req, res) => {
-    const stream = req.params.stream;
-    const file = req.params.file;
-    const hlsUrl = `http://localhost:8000/live/${stream}/${file}`;
-    
-    console.log(`📡 Proxying HLS request to: ${hlsUrl}`);
-    
-    // Simple proxy implementation
-    http.get(hlsUrl, (proxyRes) => {
-        res.writeHead(proxyRes.statusCode, proxyRes.headers);
-        proxyRes.pipe(res);
-    }).on('error', (err) => {
-        console.error('❌ Error proxying HLS request:', err);
-        res.status(500).send('Error proxying HLS request');
     });
 });
 
