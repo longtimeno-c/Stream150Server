@@ -1188,12 +1188,12 @@ body {
 
 /* Stream Highlights Section */
 .stream-highlights {
-    display: none; /* Hidden by default, shown only on desktop */
     margin-top: 20px;
     background: #2d2d2d;
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
 }
 
 .highlights-title {
@@ -1207,7 +1207,7 @@ body {
 
 .highlights-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(1, 1fr);
     gap: 15px;
 }
 
@@ -1290,17 +1290,56 @@ body {
     color: #aaaaaa;
 }
 
-/* Show highlights only on desktop */
-@media (min-width: 768px) {
+/* Mobile-specific styles */
+@media (max-width: 767px) {
     .stream-highlights {
-        display: block;
+        margin-top: 15px;
+        padding: 10px;
+    }
+    
+    .highlights-title {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
+    
+    .highlights-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .highlight-card {
+        margin-bottom: 10px;
+    }
+    
+    .highlight-info h4 {
+        font-size: 0.9rem;
+    }
+    
+    .highlight-date {
+        font-size: 0.7rem;
+    }
+    
+    .admin-message {
+        font-size: 0.8rem;
+    }
+    
+    /* Make play button always visible on mobile for better UX */
+    .highlight-play-button {
+        opacity: 0.8;
+        background: rgba(255, 255, 255, 0.3);
     }
 }
 
-/* Adjust for smaller desktop screens */
+/* Tablet styles */
 @media (min-width: 768px) and (max-width: 1024px) {
     .highlights-container {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Desktop styles */
+@media (min-width: 1025px) {
+    .highlights-container {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
@@ -1707,4 +1746,31 @@ body {
 .debug-btn:hover {
     background: #444;
     border-color: #555;
+}
+
+/* Main container layout */
+@media (max-width: 767px) {
+    .main-container {
+        display: flex;
+        flex-direction: column;
+        padding: 5px;
+    }
+    
+    .video-container {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    .chat-container {
+        width: 100%;
+        margin-top: 15px;
+    }
+    
+    /* Add a divider between sections on mobile */
+    .mobile-section-divider {
+        height: 1px;
+        background: linear-gradient(to right, transparent, #444, transparent);
+        margin: 10px 0;
+        width: 100%;
+    }
 }
