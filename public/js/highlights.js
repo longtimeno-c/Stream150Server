@@ -15,7 +15,7 @@ const HighlightsManager = (function() {
         {
             id: 'highlight-1',
             title: 'Stream Test',
-            duration: 'YouTube',
+            duration: 'Video',
             date: 'Highlight',
             thumbnailUrl: 'https://img.youtube.com/vi/9QnVbfKd7is/mqdefault.jpg',
             videoUrl: 'https://www.youtube.com/watch?v=9QnVbfKd7is',
@@ -108,6 +108,9 @@ const HighlightsManager = (function() {
                             adminMessage.classList.remove('admin-highlight');
                         }, 2000);
                     }
+                    
+                    // Make sure all highlight cards have delete buttons
+                    updateHighlightCardsForAdmin();
                 }
                 return;
             }
@@ -219,8 +222,19 @@ const HighlightsManager = (function() {
         console.log('- Is admin:', isAdmin);
         console.log('- Previous admin status:', previousAdminStatus);
         
-        // Show/hide upload card based on admin status
-        toggleUploadCardVisibility();
+        // If admin status changed, update the UI
+        if (previousAdminStatus !== isAdmin) {
+            console.log('Admin status changed. Updating UI...');
+            
+            // Show/hide upload card based on admin status
+            toggleUploadCardVisibility();
+            
+            // Update all highlight cards to show/hide delete buttons
+            updateHighlightCardsForAdmin();
+        } else {
+            // Just toggle visibility without full update
+            toggleUploadCardVisibility();
+        }
         
         // Return the status for debugging
         return {
@@ -229,6 +243,57 @@ const HighlightsManager = (function() {
             isAdmin,
             adminUsername: CONFIG.ADMIN_USERNAME
         };
+    }
+
+    /**
+     * Update all highlight cards to show/hide admin controls based on admin status
+     */
+    function updateHighlightCardsForAdmin() {
+        console.log('Updating highlight cards for admin status:', isAdmin);
+        
+        // Get all highlight cards
+        const cards = document.querySelectorAll('.highlight-card:not(.upload-card)');
+        
+        cards.forEach(card => {
+            const highlightId = card.getAttribute('data-id');
+            console.log(`Updating card ${highlightId} for admin status`);
+            
+            // Remove existing admin controls if any
+            const existingControls = card.querySelector('.highlight-admin-controls');
+            if (existingControls) {
+                existingControls.remove();
+            }
+            
+            // Add admin controls if admin
+            if (isAdmin) {
+                // Get the highlight title for the confirmation dialog
+                const titleElement = card.querySelector('h4');
+                const title = titleElement ? titleElement.textContent : 'this highlight';
+                
+                // Create admin controls element
+                const adminControls = document.createElement('div');
+                adminControls.className = 'highlight-admin-controls';
+                adminControls.innerHTML = `<button class="highlight-delete-btn" title="Delete highlight">×</button>`;
+                
+                // Add to card
+                card.appendChild(adminControls);
+                
+                // Add event listener to delete button
+                const deleteBtn = adminControls.querySelector('.highlight-delete-btn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        console.log('Delete button clicked for highlight:', highlightId);
+                        
+                        if (confirm(`Delete highlight "${title}"?`)) {
+                            removeHighlight(highlightId);
+                        }
+                    });
+                }
+            }
+        });
     }
 
     /**
@@ -406,14 +471,23 @@ const HighlightsManager = (function() {
      */
     function openYoutubeModal(videoId) {
         if (youtubeModal && youtubeIframe) {
-            // Set the iframe source with the video ID
-            youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+            console.log('Opening YouTube modal for video ID:', videoId);
+            
+            // Set the iframe source with the video ID and additional parameters
+            // autoplay=1: Start playing automatically
+            // rel=0: Don't show related videos
+            // modestbranding=1: Hide YouTube logo
+            // enablejsapi=1: Enable JavaScript API
+            youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`;
             
             // Show the modal
             youtubeModal.classList.add('active');
             
             // Prevent body scrolling
             document.body.style.overflow = 'hidden';
+        } else {
+            console.error('YouTube modal elements not found, opening in new tab instead');
+            window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
         }
     }
 
@@ -455,19 +529,43 @@ const HighlightsManager = (function() {
         const highlight = allHighlights.find(h => h.id === highlightId);
         
         if (highlight) {
-            if (highlight.type === 'youtube' && highlight.videoId) {
+            if (highlight.type === 'youtube') {
+                console.log('Playing YouTube video:', highlight);
+                
+                // Check if this is a live stream
+                const isLiveStream = highlight.isLiveStream || 
+                                    (highlight.videoUrl && (highlight.videoUrl.includes('/live/') || 
+                                                           highlight.videoUrl.includes('&live')));
+                
                 // On mobile, open in YouTube app if possible
                 if (isMobileDevice()) {
-                    window.open(`https://www.youtube.com/watch?v=${highlight.videoId}`, '_blank');
+                    // For live streams, use the original URL if available
+                    if (isLiveStream && highlight.videoUrl) {
+                        window.open(highlight.videoUrl, '_blank');
+                    } else if (highlight.videoId) {
+                        window.open(`https://www.youtube.com/watch?v=${highlight.videoId}`, '_blank');
+                    } else {
+                        alert(`Error: Could not find video information for "${title}"`);
+                    }
                 } else {
-                    // On desktop, use the modal
-                    openYoutubeModal(highlight.videoId);
+                    // On desktop, use the modal for regular videos or open in new tab for live streams
+                    if (isLiveStream) {
+                        // Live streams often work better in a new tab
+                        window.open(highlight.videoUrl || `https://www.youtube.com/watch?v=${highlight.videoId}`, '_blank');
+                    } else if (highlight.videoId) {
+                        // Regular videos work fine in the modal
+                        openYoutubeModal(highlight.videoId);
+                    } else {
+                        alert(`Error: Could not find video ID for "${title}"`);
+                    }
                 }
             } else if (highlight.videoUrl && highlight.videoUrl !== '#') {
                 // Open video URL if it's a valid URL
+                console.log('Opening video URL:', highlight.videoUrl);
                 window.open(highlight.videoUrl, '_blank');
             } else {
                 // Fallback to showing an alert
+                console.log('No video URL or ID found, showing alert');
                 alert(`Playing highlight: ${title}\n\nIn a production environment, this would play the actual video.`);
             }
         } else {
@@ -550,9 +648,52 @@ const HighlightsManager = (function() {
         const videoId = extractYoutubeVideoId(url);
         
         if (videoId) {
-            // Set thumbnail preview from YouTube
-            thumbnailImage.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-            thumbnailPreview.style.display = 'block';
+            console.log('Extracted YouTube video ID:', videoId);
+            
+            // Try different thumbnail qualities in case one fails
+            const thumbnailQualities = [
+                `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,  // HD quality
+                `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,      // Medium quality
+                `https://img.youtube.com/vi/${videoId}/0.jpg`,              // Default thumbnail
+                `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,      // Alternative HD path
+                `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,          // Alternative medium path
+                `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`           // Alternative HQ path
+            ];
+            
+            // Create a test image to check if thumbnail exists
+            const testImage = new Image();
+            let currentQualityIndex = 0;
+            
+            testImage.onload = function() {
+                // Image loaded successfully, use this thumbnail
+                thumbnailImage.src = this.src;
+                thumbnailPreview.style.display = 'block';
+                console.log('Successfully loaded thumbnail:', this.src);
+            };
+            
+            testImage.onerror = function() {
+                // Try next quality if available
+                currentQualityIndex++;
+                console.log(`Thumbnail quality ${currentQualityIndex-1} failed, trying next...`);
+                
+                if (currentQualityIndex < thumbnailQualities.length) {
+                    testImage.src = thumbnailQualities[currentQualityIndex];
+                } else {
+                    // If all qualities fail, use a placeholder with YouTube branding
+                    console.warn('Could not load YouTube thumbnail, using placeholder');
+                    thumbnailImage.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360"><rect width="100%" height="100%" fill="#1a1a1a"/><path d="M231.9 229.1l-83.9-48.5V277.6l83.9-48.5zm47.3-146.4c-3.1-11.8-12.4-21.1-24.1-24.3C232.3 52.5 160 52.5 160 52.5s-72.3 0-95.1 5.9c-11.7 3.2-21 12.5-24.1 24.3C35 105.4 35 150 35 150s0 44.6 5.8 67.3c3.1 11.8 12.4 21.1 24.1 24.3 22.8 5.9 95.1 5.9 95.1 5.9s72.3 0 95.1-5.9c11.7-3.2 21-12.5 24.1-24.3 5.8-22.7 5.8-67.3 5.8-67.3s0-44.6-5.8-67.3z" fill="#ff0000"/><text x="240" y="190" text-anchor="middle" fill="white" font-family="Arial" font-size="18">YouTube Video</text><text x="240" y="220" text-anchor="middle" fill="white" font-family="Arial" font-size="14">' + videoId + '</text></svg>');
+                    thumbnailPreview.style.display = 'block';
+                }
+            };
+            
+            // Start with highest quality
+            testImage.src = thumbnailQualities[0];
+            
+            // Also store the video ID for later use
+            thumbnailImage.setAttribute('data-video-id', videoId);
+        } else {
+            console.error('Could not extract video ID from URL:', url);
+            alert('Could not extract a valid YouTube video ID from the provided URL. Please check the URL format.');
         }
     }
 
@@ -564,20 +705,34 @@ const HighlightsManager = (function() {
     function extractYoutubeVideoId(url) {
         if (!url) return null;
         
-        // Regular expressions to match YouTube URL patterns
+        console.log('Attempting to extract video ID from URL:', url);
+        
+        // Regular expressions to match various YouTube URL patterns
         const regexps = [
+            // Standard watch URLs
             /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\?]+)/,
+            // Embed URLs
             /youtube\.com\/embed\/([^\/\?]+)/,
-            /youtube\.com\/v\/([^\/\?]+)/
+            // Short youtu.be URLs
+            /youtu\.be\/([^\/\?]+)/,
+            // v= parameter anywhere in the URL
+            /[?&]v=([^&]+)/,
+            // Live stream URLs
+            /youtube\.com\/live\/([^\/\?]+)/,
+            // Legacy live URLs
+            /youtube\.com\/watch\?v=([^&]+)&?.*?\blive\b/
         ];
         
         for (const regex of regexps) {
             const match = url.match(regex);
             if (match) {
+                console.log('Found video ID:', match[1], 'using pattern:', regex);
                 return match[1];
             }
         }
         
+        // If we get here, no pattern matched
+        console.error('No matching pattern found for URL:', url);
         return null;
     }
 
@@ -600,37 +755,84 @@ const HighlightsManager = (function() {
         }
         
         const title = document.getElementById('highlightTitle').value;
-        const duration = document.getElementById('highlightDuration').value || '0:00';
+        const duration = document.getElementById('highlightDuration').value || 'Video'; // Default to "Video" instead of "0:00"
         const youtubeUrl = document.getElementById('youtubeUrl').value;
         
         let thumbnailUrl = '';
         let videoUrl = '#';
         let type = 'local';
         let videoId = null;
+        let displayDuration = duration; // Use the provided duration by default
         
         // Check if YouTube URL was provided
         if (youtubeUrl) {
             videoId = extractYoutubeVideoId(youtubeUrl);
             if (videoId) {
-                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-                videoUrl = youtubeUrl;
+                // Get the thumbnail URL from the image if it was loaded
+                if (thumbnailImage.getAttribute('data-video-id') === videoId) {
+                    thumbnailUrl = thumbnailImage.src;
+                } else {
+                    // Fallback to medium quality thumbnail
+                    thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+                }
+                
+                // Check if this is a live stream URL
+                const isLiveStream = youtubeUrl.includes('/live/') || youtubeUrl.includes('&live');
+                
+                // Ensure we have a proper YouTube URL format for playback
+                if (isLiveStream) {
+                    // For live streams, preserve the original URL format if possible
+                    videoUrl = youtubeUrl;
+                    displayDuration = 'Live'; // Set display duration to "Live" for live streams
+                    console.log('Detected live stream URL, preserving original format:', videoUrl);
+                } else {
+                    // For regular videos, use the standard watch format
+                    videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                    
+                    // If no custom duration was provided, set it to "Video"
+                    if (!duration || duration === '0:00') {
+                        displayDuration = 'Video';
+                    }
+                }
+                
                 type = 'youtube';
+                
+                console.log('Adding YouTube highlight:', {
+                    videoId,
+                    thumbnailUrl,
+                    videoUrl,
+                    isLiveStream,
+                    displayDuration
+                });
+            } else {
+                alert('Could not extract a valid YouTube video ID from the provided URL. Please check the URL and try again.');
+                return;
             }
         } else if (thumbnailFile.files.length > 0) {
             // Use the uploaded thumbnail
             thumbnailUrl = URL.createObjectURL(thumbnailFile.files[0]);
+            
+            // If no custom duration was provided, set it to "Video"
+            if (!duration || duration === '0:00') {
+                displayDuration = 'Video';
+            }
+        } else {
+            // No thumbnail or YouTube URL provided
+            alert('Please either upload a thumbnail image or provide a YouTube URL.');
+            return;
         }
         
         // Create new highlight object
         const newHighlight = {
             id: 'highlight-' + Date.now(),
             title,
-            duration,
+            duration: displayDuration, // Use the display duration
             date: 'Just now',
             thumbnailUrl,
             videoUrl,
             type,
-            videoId
+            videoId,
+            isLiveStream: youtubeUrl && youtubeUrl.includes('/live/')
         };
         
         // Add to highlights
@@ -690,36 +892,44 @@ const HighlightsManager = (function() {
                 }, 300);
             }
         } else {
-            // Remove from user highlights
-            const previousLength = userHighlights.length;
-            userHighlights = userHighlights.filter(h => h.id !== id);
+            // Find the highlight in the user highlights array
+            const highlightIndex = userHighlights.findIndex(h => h.id === id);
             
-            // Log the result
-            console.log(`Removed highlight from userHighlights array. Before: ${previousLength}, After: ${userHighlights.length}`);
-            
-            // Save to local storage
-            saveHighlights();
-            
-            // Remove from UI
-            const card = document.querySelector(`.highlight-card[data-id="${id}"]`);
-            if (card) {
-                // Add a fade-out animation
-                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.9)';
+            if (highlightIndex !== -1) {
+                // Get the highlight before removing it (for logging)
+                const highlight = userHighlights[highlightIndex];
+                console.log('Found highlight to remove:', highlight);
                 
-                // Remove after animation completes
-                setTimeout(() => {
-                    card.remove();
+                // Remove from user highlights array
+                userHighlights.splice(highlightIndex, 1);
+                console.log(`Removed highlight from userHighlights array. New length: ${userHighlights.length}`);
+                
+                // Save to local storage
+                saveHighlights();
+                
+                // Remove from UI
+                const card = document.querySelector(`.highlight-card[data-id="${id}"]`);
+                if (card) {
+                    // Add a fade-out animation
+                    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.9)';
                     
-                    // Update count display
+                    // Remove after animation completes
+                    setTimeout(() => {
+                        card.remove();
+                        
+                        // Update count display
+                        updateHighlightCountDisplay();
+                    }, 300);
+                } else {
+                    console.error(`Could not find card element for highlight ID: ${id}`);
+                    
+                    // Update count display anyway
                     updateHighlightCountDisplay();
-                }, 300);
+                }
             } else {
-                console.error(`Could not find card element for highlight ID: ${id}`);
-                
-                // Update count display anyway
-                updateHighlightCountDisplay();
+                console.error(`Could not find highlight with ID: ${id} in userHighlights array`);
             }
         }
     }
@@ -729,6 +939,8 @@ const HighlightsManager = (function() {
      * @param {Object} highlight - The highlight data
      */
     function addHighlightCard(highlight) {
+        console.log('Adding highlight card to UI:', highlight);
+        
         // Create a new highlight card element
         const card = document.createElement('div');
         card.className = highlight.type === 'youtube' ? 'highlight-card youtube-embed' : 'highlight-card';
@@ -737,11 +949,21 @@ const HighlightsManager = (function() {
         // Create the card content
         let thumbnailHtml = '';
         
-        if (highlight.type === 'youtube' && highlight.videoId) {
+        if (highlight.type === 'youtube') {
+            // Handle both regular YouTube videos and live streams
+            const isLiveStream = highlight.isLiveStream || 
+                               (highlight.videoUrl && highlight.videoUrl.includes('/live/'));
+            
+            // Determine what to display for duration
+            let displayDuration = highlight.duration;
+            if (isLiveStream && displayDuration !== 'Live') {
+                displayDuration = 'Live';
+            }
+            
             thumbnailHtml = `
-                <div class="highlight-thumbnail youtube-preview" data-video-id="${highlight.videoId}">
+                <div class="highlight-thumbnail youtube-preview" data-video-id="${highlight.videoId || ''}">
                     <img src="${highlight.thumbnailUrl}" alt="${highlight.title}" class="youtube-thumbnail">
-                    <div class="highlight-duration">${highlight.duration}</div>
+                    <div class="highlight-duration">${displayDuration}</div>
                     <div class="highlight-play-button">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                             <path d="M8 5v14l11-7z"/>
@@ -763,7 +985,7 @@ const HighlightsManager = (function() {
             `;
         }
         
-        // Add delete button for admin
+        // Add delete button for admin - always include this HTML for all highlight types
         const adminControlsHtml = isAdmin ? `
             <div class="highlight-admin-controls">
                 <button class="highlight-delete-btn" title="Delete highlight">×</button>
@@ -788,14 +1010,21 @@ const HighlightsManager = (function() {
         
         // Add event listener for delete button if admin
         if (isAdmin) {
+            console.log('Adding delete button event listener for highlight:', highlight.id);
             const deleteBtn = card.querySelector('.highlight-delete-btn');
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', function(e) {
                     e.stopPropagation(); // Prevent triggering the card click
+                    e.preventDefault();  // Prevent any default behavior
+                    
+                    console.log('Delete button clicked for highlight:', highlight.id);
+                    
                     if (confirm(`Delete highlight "${highlight.title}"?`)) {
                         removeHighlight(highlight.id);
                     }
                 });
+            } else {
+                console.error('Delete button not found for highlight:', highlight.id);
             }
         }
         
@@ -838,6 +1067,12 @@ const HighlightsManager = (function() {
         
         // Update the count display
         updateHighlightCountDisplay();
+        
+        // Make sure admin controls are properly displayed
+        if (isAdmin) {
+            console.log('Admin detected during highlight loading, updating admin controls');
+            updateHighlightCardsForAdmin();
+        }
     }
 
     /**
