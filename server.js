@@ -11,6 +11,9 @@ const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
 const MAX_CHAT_HISTORY = 100;
 
+const HIGHLIGHTS_FILE = path.join(__dirname, 'data', 'highlights.json');
+const MAX_HIGHLIGHTS = 6;
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -18,6 +21,7 @@ const wss = new WebSocket.Server({ server });
 let isStreaming = false;
 let viewerCount = 0;
 let chatHistory = [];
+let highlights = [];
 
 // Load chat history from file
 function loadChatHistory() {
@@ -66,8 +70,95 @@ function saveChatHistory() {
     }
 }
 
+// Load highlights from file
+function loadHighlights() {
+    try {
+        // Ensure data directory exists
+        const dir = path.dirname(HIGHLIGHTS_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        if (fs.existsSync(HIGHLIGHTS_FILE)) {
+            const data = fs.readFileSync(HIGHLIGHTS_FILE, 'utf8');
+            highlights = JSON.parse(data || '[]');
+            console.log(`Loaded ${highlights.length} highlights from file`);
+            
+            // Clean up if exceeding max
+            if (highlights.length > MAX_HIGHLIGHTS) {
+                highlights = highlights.slice(-MAX_HIGHLIGHTS);
+                saveHighlights(); // Save the cleaned up highlights
+            }
+        } else {
+            // Create the file if it doesn't exist
+            fs.writeFileSync(HIGHLIGHTS_FILE, '[]');
+            highlights = [];
+            console.log('Created new highlights file');
+        }
+    } catch (err) {
+        console.error('Error loading highlights:', err);
+        highlights = [];
+    }
+}
+
+// Save highlights to file
+function saveHighlights() {
+    try {
+        // Ensure data directory exists
+        const dir = path.dirname(HIGHLIGHTS_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+            console.log(`Created directory: ${dir}`);
+        }
+        
+        fs.writeFileSync(HIGHLIGHTS_FILE, JSON.stringify(highlights, null, 2));
+        console.log(`Saved ${highlights.length} highlights to file: ${HIGHLIGHTS_FILE}`);
+    } catch (err) {
+        console.error('Error saving highlights:', err);
+    }
+}
+
+// Add a highlight
+function addHighlight(highlight) {
+    // Ensure we don't exceed the maximum
+    if (highlights.length >= MAX_HIGHLIGHTS) {
+        // Remove the oldest highlight
+        highlights.shift();
+    }
+    
+    // Add the new highlight
+    highlights.push(highlight);
+    
+    // Save to file
+    saveHighlights();
+    
+    // Broadcast the updated highlights
+    broadcastHighlights();
+}
+
+// Remove a highlight
+function removeHighlight(id) {
+    const index = highlights.findIndex(h => h.id === id);
+    if (index !== -1) {
+        highlights.splice(index, 1);
+        saveHighlights();
+        broadcastHighlights();
+        return true;
+    }
+    return false;
+}
+
+// Broadcast highlights to all connected clients
+function broadcastHighlights() {
+    broadcast({
+        type: 'HIGHLIGHTS_UPDATE',
+        highlights: highlights
+    });
+}
+
 // Initialize
 loadChatHistory();
+loadHighlights();
 
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
@@ -220,6 +311,12 @@ wss.on('connection', (ws) => {
         viewers: viewerCount 
     }));
     
+    // Send initial highlights
+    ws.send(JSON.stringify({
+        type: 'HIGHLIGHTS_UPDATE',
+        highlights: highlights
+    }));
+    
     // Ensure all chat messages have the proper format before sending
     const recentMessages = chatHistory.slice(-50).map(msg => {
         // If it's a string, convert it to a proper message object
@@ -325,6 +422,42 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify({
                     type: 'CHAT_HISTORY',
                     messages: recentMessages
+                }));
+            } else if (data.type === 'ADD_HIGHLIGHT') {
+                if (data.highlight && data.isAdmin) {
+                    // Generate a server-side ID if not provided
+                    if (!data.highlight.id) {
+                        data.highlight.id = 'highlight-' + Date.now();
+                    }
+                    
+                    // Add server timestamp
+                    data.highlight.serverTimestamp = new Date().toISOString();
+                    
+                    // Add the highlight
+                    addHighlight(data.highlight);
+                    
+                    // Confirm to the sender
+                    ws.send(JSON.stringify({
+                        type: 'HIGHLIGHT_ADDED',
+                        highlight: data.highlight
+                    }));
+                }
+            } else if (data.type === 'REMOVE_HIGHLIGHT') {
+                if (data.id && data.isAdmin) {
+                    const removed = removeHighlight(data.id);
+                    
+                    // Confirm to the sender
+                    ws.send(JSON.stringify({
+                        type: 'HIGHLIGHT_REMOVED',
+                        id: data.id,
+                        success: removed
+                    }));
+                }
+            } else if (data.type === 'REQUEST_HIGHLIGHTS') {
+                // Send highlights to the requesting client
+                ws.send(JSON.stringify({
+                    type: 'HIGHLIGHTS_UPDATE',
+                    highlights: highlights
                 }));
             }
         } catch (err) {
