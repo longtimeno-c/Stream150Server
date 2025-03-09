@@ -48,10 +48,9 @@ const updateCountdown = () => {
                 </div>
                 <span class="countdown-separator">:</span>
                 <div class="countdown-unit">
-                    <span class="countdown-value">${pad(seconds, 2)}</span>
+                    <span class="countdown-value">${pad(seconds, 2)}<span class="countdown-milliseconds">.${pad(milliseconds, 3)}</span></span>
                     <span class="countdown-unit-label">sec</span>
                 </div>
-                <span class="countdown-milliseconds">.${pad(milliseconds, 3)}</span>
             </div>
         `;
     } else if (distanceToEnd > 0) {
@@ -89,10 +88,9 @@ const updateCountdown = () => {
                 </div>
                 <span class="countdown-separator">:</span>
                 <div class="countdown-unit">
-                    <span class="countdown-value">${pad(seconds, 2)}</span>
+                    <span class="countdown-value">${pad(seconds, 2)}<span class="countdown-milliseconds">.${pad(milliseconds, 3)}</span></span>
                     <span class="countdown-unit-label">sec</span>
                 </div>
-                <span class="countdown-milliseconds">.${pad(milliseconds, 3)}</span>
             </div>
         `;
     } else {
