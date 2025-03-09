@@ -192,9 +192,8 @@
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     console.log('✅ HLS manifest parsed, attempting playback');
                     
-                    // Always use Auto quality
-                    hls.currentLevel = -1;
-                    hls.nextLevel = -1;
+                    // Load user's preferred quality or default to Auto
+                    QualityManager.loadPreferredQuality();
                     
                     const playPromise = video.play();
                     if (playPromise !== undefined) {

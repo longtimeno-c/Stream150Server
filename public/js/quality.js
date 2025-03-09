@@ -8,7 +8,8 @@ const QualityManager = (function() {
     const defaultQualityLevels = [
         { height: 1080, bitrate: 5000000, index: 0 },  // 1080p (5Mbps)
         { height: 720, bitrate: 2500000, index: 1 },   // 720p (2.5Mbps)
-        { height: 480, bitrate: 1000000, index: 2 }    // 480p (1Mbps)
+        { height: 480, bitrate: 1000000, index: 2 },   // 480p (1Mbps)
+        { height: 360, bitrate: 500000, index: 3 }     // 360p (0.5Mbps)
     ];
 
     function init(hlsInstance) {
@@ -29,24 +30,11 @@ const QualityManager = (function() {
             
             if (data.levels && data.levels.length > 0) {
                 // If we have real levels from the stream, use them
-                if (data.levels.some(level => level.height > 0)) {
-                    qualityLevels = data.levels;
-                    updateQualityOptions(qualityLevels);
-                } else {
-                    // If levels don't have height info, use our defaults but map to real indices
-                    const mappedLevels = defaultQualityLevels.map((level, i) => {
-                        return {
-                            ...level,
-                            index: i < data.levels.length ? i : 0
-                        };
-                    });
-                    updateQualityOptions(mappedLevels);
-                }
+                qualityLevels = data.levels;
+                updateQualityOptions(qualityLevels);
                 
                 // Always set to Auto quality after manifest is parsed
-                setTimeout(() => {
-                    setAutoQuality();
-                }, 500);
+                setAutoQuality();
             }
         });
 
@@ -87,8 +75,14 @@ const QualityManager = (function() {
                            i === 0 ? 1080 : 
                            i === 1 ? 720 : 
                            i === 2 ? 480 : 360;
+            
+            // Format bitrate in Mbps for display
+            const bitrate = level.bitrate ? (level.bitrate / 1000000).toFixed(1) : 
+                            i === 0 ? 5.0 :
+                            i === 1 ? 2.5 :
+                            i === 2 ? 1.0 : 0.5;
                            
-            option.text = `${height}p${height >= 720 ? ' HD' : ''}`;
+            option.text = `${height}p${height >= 720 ? ' HD' : ''} (${bitrate} Mbps)`;
             qualitySelect.add(option);
         });
 
@@ -128,9 +122,15 @@ const QualityManager = (function() {
     }
 
     function loadPreferredQuality() {
-        // We're now always defaulting to Auto, so this function is just for reference
-        // and backward compatibility
-        setAutoQuality();
+        // Check if user has a saved preference
+        const savedQuality = localStorage.getItem('preferred_quality');
+        
+        if (savedQuality !== null) {
+            changeQuality(parseInt(savedQuality));
+        } else {
+            // Default to Auto if no preference is saved
+            setAutoQuality();
+        }
     }
 
     function setAutoQuality() {

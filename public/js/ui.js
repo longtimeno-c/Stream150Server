@@ -206,7 +206,8 @@ function initializeStream(useLocalhost = false) {
                 height: level.height,
             }));
             
-            updateQualitySelector(qualities, hls);
+            // Quality is now managed by QualityManager
+            // updateQualitySelector(qualities, hls);
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // For Safari - fallback to native HLS support
@@ -287,21 +288,8 @@ function toggleFullscreen() {
 }
 
 function changeQuality(levelIndex) {
-    if (hls) {
-        hls.currentLevel = parseInt(levelIndex);
-    }
-}
-
-function updateQualitySelector(qualities, hls) {
-    const selector = document.querySelector('.quality-selector');
-    selector.innerHTML = `
-        <select onchange="changeQuality(this.value)">
-            <option value="-1">Auto</option>
-            ${qualities.map(q => `
-                <option value="${q.index}">${q.height}p (${Math.round(q.bitrate/1000)} kbps)</option>
-            `).join('')}
-        </select>
-    `;
+    // Delegate to QualityManager
+    QualityManager.changeQuality(parseInt(levelIndex));
 }
 
 // Listen for username changes
