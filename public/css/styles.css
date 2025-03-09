@@ -22,6 +22,68 @@ body {
     z-index: 10;
 }
 
+/* Stream150 heading styles */
+.header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #ffffff;
+    background: linear-gradient(90deg, #ffffff, #ff9966);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    position: relative;
+    display: inline-block;
+    transition: all 0.3s ease;
+    animation: fadeInDown 0.8s ease-out forwards;
+}
+
+@keyframes fadeInDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header-logo {
+    height: 1.8rem;
+    width: auto;
+    vertical-align: middle;
+    margin-right: 10px;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+    transition: transform 0.3s ease;
+}
+
+.header h1:hover .header-logo {
+    transform: rotate(10deg);
+}
+
+.header h1::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #ff4d4d, #ff9966);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.header h1:hover {
+    transform: translateY(-2px);
+}
+
+.header h1:hover::after {
+    transform: scaleX(1);
+}
+
 .main-container {
     display: flex;
     flex-direction: column;
@@ -887,12 +949,22 @@ body {
 
 @media (max-width: 767px) {
     .username-change-btn {
-        font-size: 10px;
-        padding: 1px 3px;
+        font-size: 0.7rem;
+        padding: 3px 6px;
     }
     
     .current-username {
-        font-size: 12px;
+        font-size: 0.8rem;
+    }
+    
+    /* Responsive header styles */
+    .header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .header-logo {
+        height: 1.5rem;
+        margin-right: 8px;
     }
 }
 
