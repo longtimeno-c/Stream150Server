@@ -22,6 +22,18 @@ const UserManager = (function() {
     // Private state
     let currentUsername = null;
     
+    // Generate a random username
+    function generateRandomUsername() {
+        const adjectives = ['Happy', 'Lucky', 'Sunny', 'Clever', 'Swift', 'Brave', 'Bright', 'Cool', 'Wild', 'Calm'];
+        const nouns = ['Panda', 'Tiger', 'Eagle', 'Dolphin', 'Wolf', 'Fox', 'Hawk', 'Lion', 'Bear', 'Shark'];
+        const randomNum = Math.floor(Math.random() * 1000);
+        
+        const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+        
+        return `${randomAdj}${randomNoun}${randomNum}`;
+    }
+    
     // Initialize the user manager
     function init() {
         // Get the username from storage
@@ -30,8 +42,8 @@ const UserManager = (function() {
                 if (username) {
                     setCurrentUsername(username);
                 } else {
-                    // If no username is stored, prompt for one
-                    promptForUsername()
+                    // If no username is stored, prompt for one with a random initial value
+                    promptForUsername({ initialUsername: generateRandomUsername() })
                         .then(newUsername => {
                             setCurrentUsername(newUsername);
                         })
@@ -206,7 +218,7 @@ const UserManager = (function() {
                 // Create and add the modal to the DOM
                 const modal = createUsernameModal({
                     ...options,
-                    initialUsername: currentUsername !== config.defaultUsername ? currentUsername : ''
+                    initialUsername: options.initialUsername || (currentUsername !== config.defaultUsername ? currentUsername : '')
                 });
                 document.body.appendChild(modal);
                 
