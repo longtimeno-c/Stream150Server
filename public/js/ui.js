@@ -436,8 +436,20 @@ function updateStreamStatus(status) {
     const statusElement = document.getElementById('status');
     const statusText = document.getElementById('statusText');
     
+    if (!statusElement || !statusText) {
+        console.error('Status elements not found in DOM');
+        return;
+    }
+    
     statusText.textContent = status;
+    
+    // Debug the class changes
+    console.log(`Setting status class: status === 'LIVE' ? ${status === 'LIVE'}`);
+    console.log(`Previous classes: ${statusElement.className}`);
+    
     statusElement.className = 'status-indicator ' + (status === 'LIVE' ? 'online' : 'offline');
+    
+    console.log(`New classes: ${statusElement.className}`);
     
     // Update viewer count display
     const viewerCount = document.getElementById('viewerCount');
@@ -619,26 +631,46 @@ async function checkStreamAvailability(url) {
 
 function handleStreamStatusUpdate(status) {
     console.log('🎥 Stream status update:', status);
+    
+    // Debug the status value
+    console.log(`Status value: "${status}"`);
+    console.log(`Status type: ${typeof status}`);
+    console.log(`Status === 'LIVE': ${status === 'LIVE'}`);
+    
     updateStreamStatus(status);
     
     const statusElement = document.getElementById('status');
     const statusTextElement = document.getElementById('statusText');
     
+    if (!statusElement || !statusTextElement) {
+        console.error('Status elements not found in DOM');
+        return;
+    }
+    
+    console.log(`Before update - classList: ${statusElement.classList}`);
+    
     if (status === 'LIVE') {
-        if (statusElement && statusTextElement) {
-            statusElement.classList.remove('offline');
-            statusElement.classList.add('online');
-            statusTextElement.textContent = 'LIVE';
-        }
+        console.log('Setting to LIVE state');
+        statusElement.classList.remove('offline');
+        statusElement.classList.add('online');
+        statusTextElement.textContent = 'LIVE';
     } else {
-        if (statusElement && statusTextElement) {
-            statusElement.classList.remove('online');
-            statusElement.classList.add('offline');
-            statusTextElement.textContent = 'OFFLINE';
-        }
+        console.log('Setting to OFFLINE state');
+        statusElement.classList.remove('online');
+        statusElement.classList.add('offline');
+        statusTextElement.textContent = 'OFFLINE';
+    }
+    
+    console.log(`After update - classList: ${statusElement.classList}`);
+    
+    if (status !== 'LIVE') {
         destroyStream();
     }
 }
+
+// Make functions globally available
+window.handleStreamStatusUpdate = handleStreamStatusUpdate;
+window.updateStreamStatus = updateStreamStatus;
 
 // Add new function to handle autoplay restrictions
 function showAutoplayPrompt(video) {
