@@ -2,7 +2,8 @@
  * Stream Highlights Manager
  * Handles the display and interaction with stream highlights
  */
-const HighlightsManager = (function() {
+// Define HighlightsManager and explicitly attach it to window
+window.HighlightsManager = (function() {
     // Configuration
     const CONFIG = {
         MAX_HIGHLIGHTS: 6,                // Maximum number of highlights to display
@@ -37,6 +38,11 @@ const HighlightsManager = (function() {
     let youtubeUrlInput;
     let userHighlights = [];
     let isAdmin = false;
+    let useServerStorage = false; // Flag to indicate if we're using server storage
+
+    // Track which highlights have been dispatched to prevent duplicates
+    const dispatchedHighlights = new Set();
+    const dispatchedRemovals = new Set();
 
     /**
      * Initialize the highlights manager
@@ -334,7 +340,7 @@ const HighlightsManager = (function() {
                 adminMessage.innerHTML = 'You are logged in as <strong>Stream150Admin</strong>. You can upload and manage highlights.';
                 adminMessage.classList.add('admin-message-active');
             } else {
-                adminMessage.innerHTML = 'Note: Only Stream150Admin can upload highlights';
+                adminMessage.innerHTML = '';
                 adminMessage.classList.remove('admin-message-active');
             }
         }
@@ -858,6 +864,9 @@ const HighlightsManager = (function() {
         
         // Update count display
         updateHighlightCountDisplay();
+        
+        // Dispatch event for server integration
+        dispatchHighlightAddedEvent(highlight);
     }
 
     /**
@@ -878,27 +887,22 @@ const HighlightsManager = (function() {
             // Remove from UI
             const card = document.querySelector(`.highlight-card[data-id="${id}"]`);
             if (card) {
-                // Add a fade-out animation
-                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.9)';
+                card.remove();
                 
-                // Remove after animation completes
-                setTimeout(() => {
-                    card.remove();
-                    
-                    // Update count display
-                    updateHighlightCountDisplay();
-                }, 300);
+                // Update count display
+                updateHighlightCountDisplay();
+                
+                // Dispatch event for server integration
+                dispatchHighlightRemovedEvent(id);
             }
         } else {
             // Find the highlight in the user highlights array
             const highlightIndex = userHighlights.findIndex(h => h.id === id);
             
             if (highlightIndex !== -1) {
-                // Get the highlight before removing it (for logging)
+                // Get the highlight for logging
                 const highlight = userHighlights[highlightIndex];
-                console.log('Found highlight to remove:', highlight);
+                console.log(`Found highlight at index ${highlightIndex}:`, highlight);
                 
                 // Remove from user highlights array
                 userHighlights.splice(highlightIndex, 1);
@@ -910,24 +914,17 @@ const HighlightsManager = (function() {
                 // Remove from UI
                 const card = document.querySelector(`.highlight-card[data-id="${id}"]`);
                 if (card) {
-                    // Add a fade-out animation
-                    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                    card.style.opacity = '0';
-                    card.style.transform = 'scale(0.9)';
-                    
-                    // Remove after animation completes
-                    setTimeout(() => {
-                        card.remove();
-                        
-                        // Update count display
-                        updateHighlightCountDisplay();
-                    }, 300);
+                    card.remove();
+                    console.log('Removed highlight card from UI');
                 } else {
-                    console.error(`Could not find card element for highlight ID: ${id}`);
-                    
-                    // Update count display anyway
-                    updateHighlightCountDisplay();
+                    console.error(`Could not find highlight card with ID: ${id} in the DOM`);
                 }
+                
+                // Update count display
+                updateHighlightCountDisplay();
+                
+                // Dispatch event for server integration
+                dispatchHighlightRemovedEvent(id);
             } else {
                 console.error(`Could not find highlight with ID: ${id} in userHighlights array`);
             }
@@ -1130,6 +1127,74 @@ const HighlightsManager = (function() {
     function saveHighlights() {
         localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(userHighlights));
     }
+    
+    /**
+     * Update highlights from server
+     * @param {Array} serverHighlights - The highlights from the server
+     */
+    function updateFromServer(serverHighlights) {
+        console.log('Updating highlights from server:', serverHighlights);
+        
+        // Set the flag to indicate we're using server storage
+        useServerStorage = true;
+        
+        // Replace user highlights with server highlights
+        userHighlights = serverHighlights || [];
+        
+        // Save to local storage as a backup
+        saveHighlights();
+        
+        // Reload the UI
+        loadHighlights();
+    }
+    
+    /**
+     * Dispatch highlight added event for server integration
+     * @param {Object} highlight - The highlight that was added
+     */
+    function dispatchHighlightAddedEvent(highlight) {
+        // Check if this highlight has already been dispatched
+        if (highlight.id && dispatchedHighlights.has(highlight.id)) {
+            console.log('Highlight already dispatched, skipping:', highlight.id);
+            return;
+        }
+        
+        // Always dispatch the event, regardless of useServerStorage flag
+        // This ensures that highlights are always sent to the server
+        const event = new CustomEvent('highlight-added', {
+            detail: highlight
+        });
+        document.dispatchEvent(event);
+        console.log('Dispatched highlight-added event:', highlight);
+        
+        // Track that this highlight has been dispatched
+        if (highlight.id) {
+            dispatchedHighlights.add(highlight.id);
+        }
+    }
+    
+    /**
+     * Dispatch highlight removed event for server integration
+     * @param {string} id - The ID of the highlight that was removed
+     */
+    function dispatchHighlightRemovedEvent(id) {
+        // Check if this removal has already been dispatched
+        if (dispatchedRemovals.has(id)) {
+            console.log('Highlight removal already dispatched, skipping:', id);
+            return;
+        }
+        
+        // Always dispatch the event, regardless of useServerStorage flag
+        // This ensures that highlight removals are always sent to the server
+        const event = new CustomEvent('highlight-removed', {
+            detail: id
+        });
+        document.dispatchEvent(event);
+        console.log('Dispatched highlight-removed event:', id);
+        
+        // Track that this removal has been dispatched
+        dispatchedRemovals.add(id);
+    }
 
     // Public API
     return {
@@ -1137,12 +1202,20 @@ const HighlightsManager = (function() {
         openYoutubeModal,
         openUploadModal,
         checkAdminStatus,
-        CONFIG
+        updateFromServer,
+        CONFIG,
+        get isAdmin() { return isAdmin; }
     };
 })();
 
 // Initialize when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the highlights manager
-    HighlightsManager.init();
+    window.HighlightsManager.init();
+    
+    // Ensure HighlightsManager is available globally
+    console.log('HighlightsManager initialized and available globally:', !!window.HighlightsManager);
+    
+    // Dispatch an event to notify other scripts that HighlightsManager is ready
+    document.dispatchEvent(new CustomEvent('highlights-manager-ready'));
 }); 

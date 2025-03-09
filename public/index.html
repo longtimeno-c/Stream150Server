@@ -11,7 +11,35 @@
     <link rel="shortcut icon" href="150logo.ico" type="image/x-icon">
     <link rel="icon" href="150logo.ico" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="js/websocket.js"></script>
+    <script>
+        // Track if we've already created a fallback HighlightsManager
+        let fallbackCreated = false;
+        
+        console.log('Immediate check - HighlightsManager available:', !!window.HighlightsManager);
+        
+        // Check again when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded check - HighlightsManager available:', !!window.HighlightsManager);
+            
+            // If HighlightsManager is not available, create a simple version
+            if (!window.HighlightsManager && !fallbackCreated) {
+                console.error('HighlightsManager not found, creating a fallback version');
+                fallbackCreated = true;
+                window.HighlightsManager = {
+                    isAdmin: false,
+                    updateFromServer: function(highlights) {
+                        console.log('Fallback updateFromServer called with:', highlights);
+                    }
+                };
+                // Dispatch the ready event
+                document.dispatchEvent(new CustomEvent('highlights-manager-ready'));
+            }
+        });
+    </script>
     <script src="js/highlights.js"></script>
+    <script src="js/server-highlights.js"></script>
+    <script src="js/highlights-debug.js"></script>
 </head>
 
 <body>
@@ -108,7 +136,6 @@
                         </div>
                     </div>
                 </div>
-                <p class="admin-message">Note: Only Stream150Admin can upload highlights</p>
                 <div class="debug-controls" style="text-align: center; margin-top: 10px; display: none;" id="adminDebugControls">
                     <button onclick="HighlightsManager.checkAdminStatus(); alert('Admin check complete. Check console for details.');" class="debug-btn">Debug Admin Status</button>
                 </div>
@@ -506,7 +533,6 @@
     <script src="js/storage.js"></script>
     <script src="js/user.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/websocket.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/donations.js"></script>
     <script src="js/ui.js"></script>
