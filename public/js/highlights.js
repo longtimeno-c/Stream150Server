@@ -25,8 +25,12 @@ window.HighlightsManager = (function() {
         }
     ];
 
+    // Private state
+    let currentUsername = null;
+    
     // DOM elements
-    let highlightsContainer;
+    let desktopHighlightsContainer;
+    let mobileHighlightsContainer;
     let youtubeModal;
     let youtubeIframe;
     let uploadModal;
@@ -49,7 +53,8 @@ window.HighlightsManager = (function() {
      */
     function init() {
         // Get DOM elements
-        highlightsContainer = document.querySelector('.highlights-container');
+        desktopHighlightsContainer = document.querySelector('.desktop-highlights .highlights-container');
+        mobileHighlightsContainer = document.querySelector('.mobile-highlights .highlights-container');
         youtubeModal = document.getElementById('youtubeModal');
         youtubeIframe = document.getElementById('youtubeIframe');
         uploadModal = document.getElementById('uploadModal');
@@ -60,7 +65,7 @@ window.HighlightsManager = (function() {
         thumbnailImage = document.getElementById('thumbnailImage');
         youtubeUrlInput = document.getElementById('youtubeUrl');
         
-        if (highlightsContainer) {
+        if (desktopHighlightsContainer || mobileHighlightsContainer) {
             // Initialize max highlights display
             updateMaxHighlightsDisplay();
             
@@ -134,8 +139,14 @@ window.HighlightsManager = (function() {
      */
     function updateMaxHighlightsDisplay() {
         const maxHighlightsElement = document.getElementById('maxHighlights');
+        const mobileMaxHighlightsElement = document.getElementById('mobileMaxHighlights');
+        
         if (maxHighlightsElement) {
             maxHighlightsElement.textContent = CONFIG.MAX_HIGHLIGHTS;
+        }
+        
+        if (mobileMaxHighlightsElement) {
+            mobileMaxHighlightsElement.textContent = CONFIG.MAX_HIGHLIGHTS;
         }
     }
 
@@ -144,8 +155,10 @@ window.HighlightsManager = (function() {
      */
     function updateHighlightCountDisplay() {
         const highlightCountElement = document.getElementById('highlightCount');
+        const mobileHighlightCountElement = document.getElementById('mobileHighlightCount');
+        const count = getAllHighlights().length;
+        
         if (highlightCountElement) {
-            const count = getAllHighlights().length;
             highlightCountElement.textContent = count;
             
             // Add visual indication if approaching limit
@@ -153,6 +166,17 @@ window.HighlightsManager = (function() {
                 highlightCountElement.classList.add('count-limit');
             } else {
                 highlightCountElement.classList.remove('count-limit');
+            }
+        }
+        
+        if (mobileHighlightCountElement) {
+            mobileHighlightCountElement.textContent = count;
+            
+            // Add visual indication if approaching limit
+            if (count >= CONFIG.MAX_HIGHLIGHTS) {
+                mobileHighlightCountElement.classList.add('count-limit');
+            } else {
+                mobileHighlightCountElement.classList.remove('count-limit');
             }
         }
     }
@@ -257,98 +281,159 @@ window.HighlightsManager = (function() {
     function updateHighlightCardsForAdmin() {
         console.log('Updating highlight cards for admin status:', isAdmin);
         
-        // Get all highlight cards
-        const cards = document.querySelectorAll('.highlight-card:not(.upload-card)');
-        
-        cards.forEach(card => {
-            const highlightId = card.getAttribute('data-id');
-            console.log(`Updating card ${highlightId} for admin status`);
+        // Update desktop highlight cards
+        if (desktopHighlightsContainer) {
+            const desktopCards = desktopHighlightsContainer.querySelectorAll('.highlight-card:not(.upload-card)');
             
-            // Remove existing admin controls if any
-            const existingControls = card.querySelector('.highlight-admin-controls');
-            if (existingControls) {
-                existingControls.remove();
-            }
-            
-            // Add admin controls if admin
-            if (isAdmin) {
-                // Get the highlight title for the confirmation dialog
-                const titleElement = card.querySelector('h4');
-                const title = titleElement ? titleElement.textContent : 'this highlight';
+            desktopCards.forEach(card => {
+                const highlightId = card.getAttribute('data-id');
+                console.log(`Updating desktop card ${highlightId} for admin status`);
                 
-                // Create admin controls element
-                const adminControls = document.createElement('div');
-                adminControls.className = 'highlight-admin-controls';
-                adminControls.innerHTML = `<button class="highlight-delete-btn" title="Delete highlight">×</button>`;
+                // Remove existing admin controls if any
+                const existingControls = card.querySelector('.highlight-admin-controls');
+                if (existingControls) {
+                    existingControls.remove();
+                }
                 
-                // Add to card
-                card.appendChild(adminControls);
-                
-                // Add event listener to delete button
-                const deleteBtn = adminControls.querySelector('.highlight-delete-btn');
-                if (deleteBtn) {
+                // Add admin controls if admin
+                if (isAdmin) {
+                    // Get the highlight title for the confirmation dialog
+                    const titleElement = card.querySelector('h4');
+                    const title = titleElement ? titleElement.textContent : 'this highlight';
+                    
+                    // Create admin controls
+                    const adminControls = document.createElement('div');
+                    adminControls.className = 'highlight-admin-controls';
+                    adminControls.innerHTML = `
+                        <button class="highlight-delete-btn" title="Delete Highlight">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    `;
+                    
+                    // Add delete event listener
+                    const deleteBtn = adminControls.querySelector('.highlight-delete-btn');
                     deleteBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        e.preventDefault();
+                        e.stopPropagation(); // Prevent opening the highlight
                         
-                        console.log('Delete button clicked for highlight:', highlightId);
-                        
-                        if (confirm(`Delete highlight "${title}"?`)) {
+                        if (confirm(`Are you sure you want to delete "${title}"?`)) {
                             removeHighlight(highlightId);
                         }
                     });
+                    
+                    // Add to card
+                    card.appendChild(adminControls);
                 }
-            }
-        });
+            });
+        }
+        
+        // Update mobile highlight cards
+        if (mobileHighlightsContainer) {
+            const mobileCards = mobileHighlightsContainer.querySelectorAll('.highlight-card:not(.upload-card)');
+            
+            mobileCards.forEach(card => {
+                const highlightId = card.getAttribute('data-id');
+                console.log(`Updating mobile card ${highlightId} for admin status`);
+                
+                // Remove existing admin controls if any
+                const existingControls = card.querySelector('.highlight-admin-controls');
+                if (existingControls) {
+                    existingControls.remove();
+                }
+                
+                // Add admin controls if admin
+                if (isAdmin) {
+                    // Get the highlight title for the confirmation dialog
+                    const titleElement = card.querySelector('h4');
+                    const title = titleElement ? titleElement.textContent : 'this highlight';
+                    
+                    // Create admin controls
+                    const adminControls = document.createElement('div');
+                    adminControls.className = 'highlight-admin-controls';
+                    adminControls.innerHTML = `
+                        <button class="highlight-delete-btn" title="Delete Highlight">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    `;
+                    
+                    // Add delete event listener
+                    const deleteBtn = adminControls.querySelector('.highlight-delete-btn');
+                    deleteBtn.addEventListener('click', function(e) {
+                        e.stopPropagation(); // Prevent opening the highlight
+                        
+                        if (confirm(`Are you sure you want to delete "${title}"?`)) {
+                            removeHighlight(highlightId);
+                        }
+                    });
+                    
+                    // Add to card
+                    card.appendChild(adminControls);
+                }
+            });
+        }
     }
 
     /**
      * Toggle visibility of the upload card based on admin status
      */
     function toggleUploadCardVisibility() {
-        const uploadCard = document.querySelector('.highlight-card.upload-card');
+        const desktopUploadCard = desktopHighlightsContainer ? desktopHighlightsContainer.querySelector('.highlight-card.upload-card') : null;
+        const mobileUploadCard = mobileHighlightsContainer ? mobileHighlightsContainer.querySelector('.highlight-card.upload-card') : null;
+        
         console.log('Toggle upload card visibility:');
-        console.log('- Upload card element found:', !!uploadCard);
+        console.log('- Desktop upload card found:', !!desktopUploadCard);
+        console.log('- Mobile upload card found:', !!mobileUploadCard);
         console.log('- Is admin:', isAdmin);
         
-        if (uploadCard) {
+        // Handle desktop upload card
+        if (desktopUploadCard) {
             if (isAdmin) {
-                console.log('- Setting upload card to display: block');
-                uploadCard.style.display = 'block';
-                
-                // Make sure it's visible by also setting other properties
-                uploadCard.style.visibility = 'visible';
-                uploadCard.style.opacity = '1';
+                console.log('- Setting desktop upload card to display: block');
+                desktopUploadCard.style.display = 'block';
+                desktopUploadCard.style.visibility = 'visible';
+                desktopUploadCard.style.opacity = '1';
                 
                 // Add a highlight effect to make it obvious
-                uploadCard.classList.add('admin-highlight');
+                desktopUploadCard.classList.add('admin-highlight');
                 setTimeout(() => {
-                    uploadCard.classList.remove('admin-highlight');
+                    desktopUploadCard.classList.remove('admin-highlight');
                 }, 2000);
             } else {
-                console.log('- Setting upload card to display: none');
-                uploadCard.style.display = 'none';
+                console.log('- Setting desktop upload card to display: none');
+                desktopUploadCard.style.display = 'none';
+                desktopUploadCard.style.visibility = 'hidden';
+                desktopUploadCard.style.opacity = '0';
             }
-        } else {
-            console.error('Upload card element not found in the DOM');
         }
         
-        // Also update the admin message
+        // Handle mobile upload card
+        if (mobileUploadCard) {
+            if (isAdmin) {
+                console.log('- Setting mobile upload card to display: block');
+                mobileUploadCard.style.display = 'block';
+                mobileUploadCard.style.visibility = 'visible';
+                mobileUploadCard.style.opacity = '1';
+                
+                // Add a highlight effect to make it obvious
+                mobileUploadCard.classList.add('admin-highlight');
+                setTimeout(() => {
+                    mobileUploadCard.classList.remove('admin-highlight');
+                }, 2000);
+            } else {
+                console.log('- Setting mobile upload card to display: none');
+                mobileUploadCard.style.display = 'none';
+                mobileUploadCard.style.visibility = 'hidden';
+                mobileUploadCard.style.opacity = '0';
+            }
+        }
+        
+        // Update admin message
         const adminMessage = document.querySelector('.admin-message');
         if (adminMessage) {
-            if (isAdmin) {
-                adminMessage.innerHTML = 'You are logged in as <strong>Stream150Admin</strong>. You can upload and manage highlights.';
-                adminMessage.classList.add('admin-message-active');
-            } else {
-                adminMessage.innerHTML = '';
-                adminMessage.classList.remove('admin-message-active');
-            }
-        }
-        
-        // Show/hide debug controls
-        const debugControls = document.getElementById('adminDebugControls');
-        if (debugControls) {
-            debugControls.style.display = isAdmin ? 'block' : 'none';
+            adminMessage.style.display = isAdmin ? 'block' : 'none';
         }
     }
 
@@ -1046,7 +1131,7 @@ window.HighlightsManager = (function() {
 
     /**
      * Add a highlight card to the UI
-     * @param {Object} highlight - The highlight data
+     * @param {Object} highlight - The highlight to add
      */
     function addHighlightCard(highlight) {
         // Create highlight card element
@@ -1091,8 +1176,33 @@ window.HighlightsManager = (function() {
             card.addEventListener('click', handleHighlightClick);
         }
         
-        // Add to highlights container
-        highlightsContainer.appendChild(card);
+        // Add to desktop highlights container if it exists
+        if (desktopHighlightsContainer) {
+            const desktopCard = card.cloneNode(true);
+            // Re-add event listeners to the cloned node
+            if (highlight.type === 'youtube') {
+                desktopCard.addEventListener('click', function() {
+                    openYoutubeModal(highlight.videoId);
+                });
+            } else {
+                desktopCard.addEventListener('click', handleHighlightClick);
+            }
+            desktopHighlightsContainer.appendChild(desktopCard);
+        }
+        
+        // Add to mobile highlights container if it exists
+        if (mobileHighlightsContainer) {
+            const mobileCard = card.cloneNode(true);
+            // Re-add event listeners to the cloned node
+            if (highlight.type === 'youtube') {
+                mobileCard.addEventListener('click', function() {
+                    openYoutubeModal(highlight.videoId);
+                });
+            } else {
+                mobileCard.addEventListener('click', handleHighlightClick);
+            }
+            mobileHighlightsContainer.appendChild(mobileCard);
+        }
         
         // Update highlight count display
         updateHighlightCountDisplay();
@@ -1187,9 +1297,17 @@ window.HighlightsManager = (function() {
      * Clear all highlights from the UI
      */
     function clearHighlightsUI() {
-        // Remove all highlight cards except the upload card
-        const cards = document.querySelectorAll('.highlight-card:not(.upload-card)');
-        cards.forEach(card => card.remove());
+        // Remove all highlight cards except the upload card from desktop container
+        if (desktopHighlightsContainer) {
+            const desktopCards = desktopHighlightsContainer.querySelectorAll('.highlight-card:not(.upload-card)');
+            desktopCards.forEach(card => card.remove());
+        }
+        
+        // Remove all highlight cards except the upload card from mobile container
+        if (mobileHighlightsContainer) {
+            const mobileCards = mobileHighlightsContainer.querySelectorAll('.highlight-card:not(.upload-card)');
+            mobileCards.forEach(card => card.remove());
+        }
     }
 
     /**
