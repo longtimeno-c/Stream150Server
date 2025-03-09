@@ -14,6 +14,12 @@ const QualityManager = (function() {
     function init(hlsInstance) {
         hls = hlsInstance;
         
+        // Always start with Auto quality
+        if (hls) {
+            hls.currentLevel = -1;
+            hls.nextLevel = -1;
+        }
+        
         // Set up initial quality options with default levels
         updateQualityOptions(defaultQualityLevels);
         
@@ -36,6 +42,11 @@ const QualityManager = (function() {
                     });
                     updateQualityOptions(mappedLevels);
                 }
+                
+                // Always set to Auto quality after manifest is parsed
+                setTimeout(() => {
+                    setAutoQuality();
+                }, 500);
             }
         });
 
@@ -48,11 +59,9 @@ const QualityManager = (function() {
         // Add change event listener to quality selector
         qualitySelect.addEventListener('change', function(e) {
             const level = parseInt(e.target.value);
+            console.log('Quality selection changed to:', level);
             changeQuality(level);
         });
-
-        // Load preferred quality from storage
-        loadPreferredQuality();
     }
 
     function updateQualityOptions(levels) {
@@ -79,24 +88,12 @@ const QualityManager = (function() {
                            i === 1 ? 720 : 
                            i === 2 ? 480 : 360;
                            
-            const bitrate = level.bitrate > 0 ? level.bitrate : 
-                           height === 1080 ? 5000000 : 
-                           height === 720 ? 2500000 : 
-                           height === 480 ? 1000000 : 500000;
-                           
             option.text = `${height}p${height >= 720 ? ' HD' : ''}`;
             qualitySelect.add(option);
         });
 
-        // Set initial selection
-        const preferredQuality = localStorage.getItem('preferred_quality');
-        if (preferredQuality !== null) {
-            // Make sure the preferred quality exists in the current options
-            const exists = Array.from(qualitySelect.options).some(opt => opt.value === preferredQuality);
-            qualitySelect.value = exists ? preferredQuality : '-1';
-        } else {
-            qualitySelect.value = '-1'; // Auto
-        }
+        // Always set initial selection to Auto
+        qualitySelect.value = '-1';
     }
 
     function changeQuality(level) {
@@ -104,18 +101,24 @@ const QualityManager = (function() {
         
         console.log('Changing quality to level:', level);
 
-        // Set the quality level in HLS.js
-        hls.currentLevel = parseInt(level);
-        
-        // Save preference if not auto
-        if (level !== -1) {
-            localStorage.setItem('preferred_quality', level);
-        } else {
-            localStorage.removeItem('preferred_quality');
+        try {
+            // Set the quality level in HLS.js
+            hls.nextLevel = parseInt(level);
+            
+            // Save preference if not auto
+            if (level !== -1) {
+                localStorage.setItem('preferred_quality', level);
+            } else {
+                localStorage.removeItem('preferred_quality');
+            }
+    
+            // Update the select element
+            qualitySelect.value = level.toString();
+            
+            console.log('Quality level set to:', hls.currentLevel, 'Next level:', hls.nextLevel);
+        } catch (error) {
+            console.error('Error changing quality level:', error);
         }
-
-        // Update the select element
-        qualitySelect.value = level.toString();
     }
 
     function updateSelectedQuality(level) {
@@ -125,9 +128,18 @@ const QualityManager = (function() {
     }
 
     function loadPreferredQuality() {
-        const preferredQuality = localStorage.getItem('preferred_quality');
-        if (preferredQuality !== null && hls) {
-            changeQuality(parseInt(preferredQuality));
+        // We're now always defaulting to Auto, so this function is just for reference
+        // and backward compatibility
+        setAutoQuality();
+    }
+
+    function setAutoQuality() {
+        if (hls) {
+            console.log('Setting quality to Auto');
+            hls.currentLevel = -1;
+            hls.nextLevel = -1;
+            qualitySelect.value = '-1';
+            localStorage.removeItem('preferred_quality');
         }
     }
 
@@ -135,6 +147,7 @@ const QualityManager = (function() {
     return {
         init,
         changeQuality,
-        loadPreferredQuality
+        loadPreferredQuality,
+        setAutoQuality
     };
 })(); 

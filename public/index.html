@@ -47,8 +47,11 @@
                             <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
                         </svg>
                     </button>
-                    <select id="qualitySelect" class="quality-select">
-                        <option value="auto">Auto</option>
+                    <select id="qualitySelect" class="quality-select" title="Video Quality">
+                        <option value="-1">Auto</option>
+                        <option value="0">1080p HD</option>
+                        <option value="1">720p HD</option>
+                        <option value="2">480p</option>
                     </select>
                 </div>
             </div>
@@ -124,12 +127,12 @@
             if (Hls.isSupported()) {
                 console.log('✅ HLS.js is supported');
                 hls = new Hls({
-                    debug: false,
+                    debug: true,
                     enableWorker: true,
                     lowLatencyMode: true,
                     backBufferLength: 90,
                     // Quality settings
-                    capLevelToPlayerSize: true,
+                    capLevelToPlayerSize: false,
                     startLevel: -1, // Auto quality
                     abrEwmaDefaultEstimate: 500000,
                     abrMaxWithRealBitrate: true,
@@ -188,7 +191,10 @@
 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     console.log('✅ HLS manifest parsed, attempting playback');
-                    QualityManager.loadPreferredQuality();
+                    
+                    // Always use Auto quality
+                    hls.currentLevel = -1;
+                    hls.nextLevel = -1;
                     
                     const playPromise = video.play();
                     if (playPromise !== undefined) {
