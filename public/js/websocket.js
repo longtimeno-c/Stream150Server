@@ -43,7 +43,31 @@ function initializeWebSocket() {
                     updateViewerCount(data.viewers);
                     break;
                 case 'STREAM_STATUS':
-                    handleStreamStatusUpdate(data.status);
+                    console.log('Stream status update received:', data.status);
+                    // Check if the handleStreamStatusUpdate function is available
+                    if (typeof window.handleStreamStatusUpdate === 'function') {
+                        window.handleStreamStatusUpdate(data.status);
+                    } else if (typeof window.updateStreamStatus === 'function') {
+                        // Fallback to updateStreamStatus if handleStreamStatusUpdate is not available
+                        window.updateStreamStatus(data.status);
+                    } else {
+                        console.error('Stream status update functions not available');
+                        // Direct DOM manipulation as a last resort
+                        const statusElement = document.getElementById('status');
+                        const statusTextElement = document.getElementById('statusText');
+                        
+                        if (statusElement && statusTextElement) {
+                            if (data.status === 'LIVE') {
+                                statusElement.classList.remove('offline');
+                                statusElement.classList.add('online');
+                                statusTextElement.textContent = 'LIVE';
+                            } else {
+                                statusElement.classList.remove('online');
+                                statusElement.classList.add('offline');
+                                statusTextElement.textContent = data.status || 'OFFLINE';
+                            }
+                        }
+                    }
                     break;
             }
         } catch (error) {

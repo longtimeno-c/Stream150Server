@@ -68,9 +68,10 @@
                 <button class="chat-send-btn" onclick="sendChat()">Send</button>
             </div>
             <div id="countdown" class="below-chat-countdown"></div>
-            <div class="chat-debug-controls" style="margin-top: 10px; text-align: right; font-size: 12px;">
+            <!-- <div class="chat-debug-controls" style="margin-top: 10px; text-align: right; font-size: 12px;">
                 <button onclick="debugChatHistory()" class="debug-btn">Debug Chat</button>
-            </div>
+                <button onclick="testSetLiveStatus()" class="debug-btn">Test LIVE Status</button>
+            </div> -->
         </div>
     </div>
 
@@ -431,6 +432,26 @@
                 }));
             } else {
                 alert('WebSocket not connected. Cannot request chat history.');
+            }
+        }
+        
+        // Test function to manually set the status to LIVE
+        function testSetLiveStatus() {
+            console.log('Setting status to LIVE for testing');
+            
+            // Call the handleStreamStatusUpdate function directly
+            if (typeof window.handleStreamStatusUpdate === 'function') {
+                window.handleStreamStatusUpdate('LIVE');
+            } else {
+                // Direct DOM manipulation as a fallback
+                const statusElement = document.getElementById('status');
+                const statusTextElement = document.getElementById('statusText');
+                
+                if (statusElement && statusTextElement) {
+                    statusElement.classList.remove('offline');
+                    statusElement.classList.add('online');
+                    statusTextElement.textContent = 'LIVE';
+                }
             }
         }
     </script>
