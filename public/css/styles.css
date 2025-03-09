@@ -423,9 +423,11 @@ body {
 }
 
 .chat-message {
-    padding: 6px 8px;
-    margin-bottom: 6px;
-    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    word-break: break-word;
+    max-width: 100%;
     animation: fadeIn 0.3s ease;
 }
 
@@ -629,6 +631,15 @@ body {
         padding: 8px;
         font-size: 0.8rem;
     }
+    
+    .below-chat-countdown {
+        margin: 10px;
+        transform: none !important;
+        transition: none;
+        position: relative;
+        bottom: 0;
+        width: calc(100% - 20px);
+    }
 }
 
 /* Mobile-specific styles */
@@ -643,13 +654,14 @@ body {
     }
     
     .chat-container {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
         display: flex;
         flex-direction: column;
         height: auto;
-        min-height: 350px;
-        max-height: 450px;
-        overflow: hidden;
-        margin-bottom: 15px;
+        flex: 0 0 auto; /* Prevent growing */
     }
     
     .chat-box {
@@ -664,8 +676,11 @@ body {
     }
     
     .chat-message {
-        padding: 6px 8px;
-        margin-bottom: 6px;
+        padding: 8px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        word-break: break-word;
+        max-width: 100%;
     }
     
     .chat-username {
@@ -686,15 +701,20 @@ body {
         height: 100%;
         overflow: hidden;
         flex-direction: column;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
     }
     
     #mobileChatBox {
-        height: calc(100vh - 250px);
-        max-height: calc(100vh - 250px);
+        height: 300px; /* Fixed height */
+        max-height: 300px; /* Fixed max height */
         overflow-y: auto;
         padding: 10px;
         margin: 0;
-        flex: 1 0 auto;
+        flex: 0 0 auto; /* Prevent growing */
         display: flex;
         flex-direction: column;
         font-size: 0.9rem;
@@ -868,10 +888,10 @@ body {
         scrollbar-width: thin;
         scrollbar-color: #1E90FF #2d2d2d;
         overflow-y: auto;
-        flex: 0 0 auto;
-        height: calc(100vh - 250px);
-        min-height: 200px;
-        max-height: calc(100vh - 250px);
+        flex: 0 0 auto; /* Prevent growing */
+        height: 300px; /* Fixed height */
+        min-height: 300px; /* Fixed min height */
+        max-height: 300px; /* Fixed max height */
     }
     
     #mobileChatBox::-webkit-scrollbar {
