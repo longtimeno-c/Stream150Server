@@ -88,7 +88,7 @@
             </div>
             
             <!-- Stream Highlights Section - Desktop Only -->
-            <div class="stream-highlights">
+            <div class="stream-highlights desktop-highlights">
                 <h3 class="highlights-title">Stream Highlights</h3>
                 <span class="highlights-count"><span id="highlightCount">0</span>/<span id="maxHighlights">6</span></span>
                 <div class="highlights-container">
@@ -141,7 +141,7 @@
                 </div>
             </div>
         </div>
-        <div class="mobile-section-divider"></div>
+        
         <div class="chat-container">
             <div class="chat-header">
                 <h3>Live Chat</h3>
@@ -161,6 +161,63 @@
                 <button onclick="debugChatHistory()" class="debug-btn">Debug Chat</button>
                 <button onclick="testSetLiveStatus()" class="debug-btn">Test LIVE Status</button>
             </div> -->
+        </div>
+        
+        <!-- Mobile divider between chat and highlights -->
+        <div class="mobile-section-divider"></div>
+        
+        <!-- Stream Highlights Section - Mobile Only -->
+        <div class="stream-highlights mobile-highlights">
+            <h3 class="highlights-title">Stream Highlights</h3>
+            <span class="highlights-count"><span id="mobileHighlightCount">0</span>/<span id="mobileMaxHighlights">6</span></span>
+            <div class="highlights-container">
+                <!-- YouTube Embed Card -->
+                <div class="highlight-card youtube-embed" data-id="highlight-1">
+                    <div class="highlight-thumbnail youtube-preview" data-video-id="9QnVbfKd7is">
+                        <img src="https://img.youtube.com/vi/9QnVbfKd7is/mqdefault.jpg" alt="YouTube Preview" class="youtube-thumbnail">
+                        <div class="highlight-duration">YouTube</div>
+                        <div class="highlight-play-button">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-info">
+                        <h4>Featured YouTube Clip</h4>
+                        <span class="highlight-date">From YouTube</span>
+                    </div>
+                </div>
+                <div class="highlight-card" data-id="highlight-2">
+                    <div class="highlight-thumbnail">
+                        <div class="highlight-duration">1:30</div>
+                        <div class="highlight-play-button">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-info">
+                        <h4>Hilarious Moment</h4>
+                        <span class="highlight-date">1 week ago</span>
+                    </div>
+                </div>
+                <div class="highlight-card upload-card">
+                    <div class="highlight-thumbnail upload-thumbnail">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+                                <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-info">
+                        <h4>Upload New Highlight</h4>
+                        <span class="highlight-date">Add your own clips</span>
+                    </div>
+                </div>
+            </div>
+            <div class="debug-controls" style="text-align: center; margin-top: 10px; display: none;" id="mobileAdminDebugControls">
+                <button onclick="HighlightsManager.checkAdminStatus(); alert('Admin check complete. Check console for details.');" class="debug-btn">Debug Admin Status</button>
+            </div>
         </div>
     </div>
 
