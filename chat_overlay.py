@@ -15,6 +15,10 @@ YOUTUBE_CHANNEL_ID = "UC5MvICzk7cb1Oh2c9VBrnIw"  # Find from YouTube channel URL
 YOUTUBE_LIVE_CHAT_ID = None  # Will be fetched dynamically
 WEBSOCKET_URL = "ws://localhost:3001"  # Match your Node.js server
 
+# Helper function to check if WebSocket is connected
+def is_websocket_connected(ws):
+    return ws is not None and hasattr(ws, "sock") and ws.sock is not None
+
 # Twitch Chat Bot
 class TwitchChatBot(commands.Bot):
     def __init__(self, ws):
@@ -32,14 +36,17 @@ class TwitchChatBot(commands.Bot):
         print(f"Twitch | {msg}")
 
     def send_to_websocket(self, msg, platform):
-        if self.ws and self.ws.connected:
-            self.ws.send(json.dumps({
-                "type": "CHAT_MESSAGE",
-                "platform": platform,
-                "username": msg.split(":")[0].strip(),
-                "message": msg.split(":", 1)[1].strip(),
-                "timestamp": ""
-            }))
+        if is_websocket_connected(self.ws):
+            try:
+                self.ws.send(json.dumps({
+                    "type": "CHAT_MESSAGE",
+                    "platform": platform,
+                    "username": msg.split(":")[0].strip(),
+                    "message": msg.split(":", 1)[1].strip(),
+                    "timestamp": ""
+                }))
+            except Exception as e:
+                print(f"Error sending Twitch message to WebSocket: {e}")
 
 # YouTube Chat Fetcher
 class YouTubeChatFetcher:
@@ -50,6 +57,8 @@ class YouTubeChatFetcher:
         self.live_chat_id = None
         self.processed_message_ids = set()
         self.session = None
+        self.retry_count = 0
+        self.max_retries = 10  # Limit retries to avoid excessive logging
 
     async def get_live_chat_id(self):
         if not self.session:
@@ -69,8 +78,16 @@ class YouTubeChatFetcher:
                                 if "items" in chat_data and chat_data["items"]:
                                     self.live_chat_id = chat_data["items"][0]["liveStreamingDetails"]["activeLiveChatId"]
                                     print(f"Found YouTube Live Chat ID: {self.live_chat_id}")
+                                    self.retry_count = 0  # Reset retry count on success
                 if not self.live_chat_id:
-                    print("No live stream found, retrying in 30s...")
+                    self.retry_count += 1
+                    if self.retry_count <= self.max_retries:
+                        print(f"No live stream found, retrying in 30s... (attempt {self.retry_count}/{self.max_retries})")
+                    else:
+                        print("Maximum retry attempts reached. Waiting for 5 minutes before trying again.")
+                        self.retry_count = 0
+                        await asyncio.sleep(300)  # Wait 5 minutes
+                        continue
                     await asyncio.sleep(30)
             except Exception as e:
                 print(f"Error fetching live chat ID: {e}")
@@ -139,14 +156,17 @@ class YouTubeChatFetcher:
             print("YouTube session closed")
 
     def send_to_websocket(self, msg, platform):
-        if self.ws and self.ws.connected:
-            self.ws.send(json.dumps({
-                "type": "CHAT_MESSAGE",
-                "platform": platform,
-                "username": msg.split(":")[0].strip(),
-                "message": msg.split(":", 1)[1].strip(),
-                "timestamp": ""
-            }))
+        if is_websocket_connected(self.ws):
+            try:
+                self.ws.send(json.dumps({
+                    "type": "CHAT_MESSAGE",
+                    "platform": platform,
+                    "username": msg.split(":")[0].strip(),
+                    "message": msg.split(":", 1)[1].strip(),
+                    "timestamp": ""
+                }))
+            except Exception as e:
+                print(f"Error sending YouTube message to WebSocket: {e}")
 
     async def cleanup(self):
         self.running = False
@@ -165,9 +185,17 @@ def run_websocket(twitch_bot, youtube_fetcher):
         twitch_bot.ws = ws
         youtube_fetcher.ws = ws
 
+    def on_close(ws, close_status_code, close_msg):
+        print(f"WebSocket connection closed: {close_status_code} - {close_msg}")
+
+    def on_error(ws, error):
+        print(f"WebSocket error: {error}")
+
     ws = websocket.WebSocketApp(WEBSOCKET_URL,
                               on_message=on_message,
-                              on_open=on_open)
+                              on_open=on_open,
+                              on_close=on_close,
+                              on_error=on_error)
     ws.run_forever()
 
 if __name__ == "__main__":

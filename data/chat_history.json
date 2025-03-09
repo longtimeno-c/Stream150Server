@@ -110,5 +110,21 @@
     "message": "hi",
     "timestamp": "2025-03-08T23:54:24.571Z",
     "id": "1741478064571"
+  },
+  {
+    "type": "CHAT_MESSAGE",
+    "platform": "web",
+    "username": "Stream150Admin",
+    "message": "boo",
+    "timestamp": "2025-03-09T15:12:32.838Z",
+    "id": "1741533152838"
+  },
+  {
+    "type": "CHAT_MESSAGE",
+    "platform": "web",
+    "username": "Stream150Admin",
+    "message": "weee",
+    "timestamp": "2025-03-09T15:12:34.958Z",
+    "id": "1741533154958"
   }
 ]
