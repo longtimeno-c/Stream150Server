@@ -1,6 +1,15 @@
+// Import getCookie function if not already available
+function getCookie(name) {
+    return Storage.get(name, { method: 'cookie', usePrefix: false });
+}
+
 let chatHistory = [];
 let autoScroll = true;
 const MAX_CHAT_MESSAGES = 100;
+let currentUsername = 'Anonymous'; // Default username
+
+// Make currentUsername globally accessible
+window.currentUsername = currentUsername;
 
 function initializeChat() {
     console.log('Initializing chat system...');
@@ -33,10 +42,23 @@ function initializeChat() {
             }
         });
     }
+    
+    // Listen for username changes
+    document.addEventListener(UserManager.EVENTS.USERNAME_LOADED, function(e) {
+        currentUsername = e.detail.username;
+        window.currentUsername = currentUsername; // Update global variable
+        console.log('Username loaded:', currentUsername);
+    });
+    
+    document.addEventListener(UserManager.EVENTS.USERNAME_CHANGED, function(e) {
+        currentUsername = e.detail.username;
+        window.currentUsername = currentUsername; // Update global variable
+        console.log('Username changed to:', currentUsername);
+    });
 }
 
 function loadChatHistory(messages) {
-    console.log('Loading chat history:', messages.length, 'messages');
+    console.log('Loading chat history:', messages ? messages.length : 0, 'messages');
     
     // Store the messages in the local history
     chatHistory = messages || [];
@@ -56,6 +78,18 @@ function loadChatHistory(messages) {
     // Add each message to the chat
     if (chatHistory.length > 0) {
         chatHistory.forEach(msg => {
+            // Skip invalid messages
+            if (!msg) return;
+            
+            // Convert string messages to objects
+            if (typeof msg === 'string') {
+                msg = {
+                    platform: 'web',
+                    username: 'Anonymous',
+                    message: msg
+                };
+            }
+            
             addChatMessageToDOM(msg, chatBox);
             if (mobileChatBox) addChatMessageToDOM(msg, mobileChatBox);
         });
@@ -71,8 +105,19 @@ function loadChatHistory(messages) {
 }
 
 function addChatMessage(message) {
+    // Handle string messages (convert to object format)
+    if (typeof message === 'string') {
+        message = {
+            type: 'CHAT_MESSAGE',
+            platform: 'web',
+            username: 'Anonymous',
+            message: message,
+            timestamp: new Date().toISOString()
+        };
+    }
+    
     // Validate message
-    if (!message || !message.message) {
+    if (!message || (!message.message && typeof message !== 'string')) {
         console.error('Invalid chat message:', message);
         return;
     }
@@ -113,13 +158,25 @@ function addChatMessage(message) {
 }
 
 function addChatMessageToDOM(message, container) {
+    // Handle string messages (convert to object format)
+    if (typeof message === 'string') {
+        // Get the current username from cookie instead of defaulting to 'Anonymous'
+        const username = getCookie('stream150_username') || 'Anonymous';
+        
+        message = {
+            platform: 'web',
+            username: username,
+            message: message
+        };
+    }
+    
     const msgDiv = document.createElement('div');
-    msgDiv.className = `chat-message ${message.platform}`;
+    msgDiv.className = `chat-message ${message.platform || 'web'}`;
     
     // Create platform badge
     const platformSpan = document.createElement('span');
-    platformSpan.className = `platform-indicator ${message.platform}`;
-    platformSpan.textContent = message.platform.charAt(0).toUpperCase() + message.platform.slice(1);
+    platformSpan.className = `platform-indicator ${message.platform || 'web'}`;
+    platformSpan.textContent = (message.platform || 'web').charAt(0).toUpperCase() + (message.platform || 'web').slice(1);
     
     // Create username element
     const usernameSpan = document.createElement('span');
@@ -142,49 +199,45 @@ function addChatMessageToDOM(message, container) {
 
 function sendChat() {
     const chatInput = document.getElementById('chatInput');
-    if (!chatInput || !chatInput.value.trim()) return;
+    if (!chatInput) return;
     
-    const message = {
-        type: 'CHAT_MESSAGE',
-        platform: 'web',
-        username: 'Web User', // You might want to implement a username system
-        message: chatInput.value.trim(),
-        timestamp: new Date().toISOString()
-    };
-    
-    // Send via WebSocket
-    if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-        window.socket.send(JSON.stringify(message));
+    const message = chatInput.value.trim();
+    if (message) {
+        // Get the current username from UserManager
+        const username = UserManager.getUsername();
+        
+        // Send the message to the server
+        window.socket.send(JSON.stringify({
+            type: 'CHAT_MESSAGE',
+            platform: 'web',
+            username: username,
+            message: message
+        }));
+        
+        // Clear the input
         chatInput.value = '';
-    } else {
-        console.error('WebSocket not connected');
-        // Add a visual error indicator
-        chatInput.classList.add('error');
-        setTimeout(() => chatInput.classList.remove('error'), 2000);
     }
 }
 
 function sendMobileChat() {
     const mobileChatInput = document.getElementById('mobileChatInput');
-    if (!mobileChatInput || !mobileChatInput.value.trim()) return;
+    if (!mobileChatInput) return;
     
-    const message = {
-        type: 'CHAT_MESSAGE',
-        platform: 'web',
-        username: 'Web User', // You might want to implement a username system
-        message: mobileChatInput.value.trim(),
-        timestamp: new Date().toISOString()
-    };
-    
-    // Send via WebSocket
-    if (window.socket && window.socket.readyState === WebSocket.OPEN) {
-        window.socket.send(JSON.stringify(message));
+    const message = mobileChatInput.value.trim();
+    if (message) {
+        // Get the current username from UserManager
+        const username = UserManager.getUsername();
+        
+        // Send the message to the server
+        window.socket.send(JSON.stringify({
+            type: 'CHAT_MESSAGE',
+            platform: 'web',
+            username: username,
+            message: message
+        }));
+        
+        // Clear the input
         mobileChatInput.value = '';
-    } else {
-        console.error('WebSocket not connected');
-        // Add a visual error indicator
-        mobileChatInput.classList.add('error');
-        setTimeout(() => mobileChatInput.classList.remove('error'), 2000);
     }
 }
 
