@@ -6,27 +6,42 @@ const QualityManager = (function() {
 
     // Default quality levels if not provided by manifest
     const defaultQualityLevels = [
-        { height: 1080, bitrate: 5000000 },  // 1080p (5Mbps)
-        { height: 720, bitrate: 2500000 },   // 720p (2.5Mbps)
-        { height: 480, bitrate: 1000000 }    // 480p (1Mbps)
+        { height: 1080, bitrate: 5000000, index: 0 },  // 1080p (5Mbps)
+        { height: 720, bitrate: 2500000, index: 1 },   // 720p (2.5Mbps)
+        { height: 480, bitrate: 1000000, index: 2 }    // 480p (1Mbps)
     ];
 
     function init(hlsInstance) {
         hls = hlsInstance;
         
-        // Set up initial quality options
+        // Set up initial quality options with default levels
         updateQualityOptions(defaultQualityLevels);
         
         // Listen for quality level loading
         hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+            console.log('HLS Quality Levels:', data.levels);
+            
             if (data.levels && data.levels.length > 0) {
-                qualityLevels = data.levels;
-                updateQualityOptions(qualityLevels);
+                // If we have real levels from the stream, use them
+                if (data.levels.some(level => level.height > 0)) {
+                    qualityLevels = data.levels;
+                    updateQualityOptions(qualityLevels);
+                } else {
+                    // If levels don't have height info, use our defaults but map to real indices
+                    const mappedLevels = defaultQualityLevels.map((level, i) => {
+                        return {
+                            ...level,
+                            index: i < data.levels.length ? i : 0
+                        };
+                    });
+                    updateQualityOptions(mappedLevels);
+                }
             }
         });
 
         // Listen for quality level changes
         hls.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {
+            console.log('Quality level switched to:', data.level);
             updateSelectedQuality(data.level);
         });
 
@@ -41,6 +56,8 @@ const QualityManager = (function() {
     }
 
     function updateQualityOptions(levels) {
+        console.log('Updating quality options with levels:', levels);
+        
         // Clear existing options
         qualitySelect.innerHTML = '';
 
@@ -51,18 +68,32 @@ const QualityManager = (function() {
         qualitySelect.add(autoOption);
 
         // Add quality options
-        levels.forEach((level, index) => {
+        levels.forEach((level, i) => {
             const option = document.createElement('option');
-            option.value = index;
-            // Use full label for dropdown options
-            option.text = `${level.height}p${level.height >= 720 ? ' HD' : ''}`;
+            // Use the level's index property if available, otherwise use the array index
+            option.value = level.index !== undefined ? level.index : i;
+            
+            // Make sure height is a positive number
+            const height = level.height > 0 ? level.height : 
+                           i === 0 ? 1080 : 
+                           i === 1 ? 720 : 
+                           i === 2 ? 480 : 360;
+                           
+            const bitrate = level.bitrate > 0 ? level.bitrate : 
+                           height === 1080 ? 5000000 : 
+                           height === 720 ? 2500000 : 
+                           height === 480 ? 1000000 : 500000;
+                           
+            option.text = `${height}p${height >= 720 ? ' HD' : ''}`;
             qualitySelect.add(option);
         });
 
         // Set initial selection
         const preferredQuality = localStorage.getItem('preferred_quality');
         if (preferredQuality !== null) {
-            qualitySelect.value = preferredQuality;
+            // Make sure the preferred quality exists in the current options
+            const exists = Array.from(qualitySelect.options).some(opt => opt.value === preferredQuality);
+            qualitySelect.value = exists ? preferredQuality : '-1';
         } else {
             qualitySelect.value = '-1'; // Auto
         }
@@ -70,8 +101,11 @@ const QualityManager = (function() {
 
     function changeQuality(level) {
         if (!hls) return;
+        
+        console.log('Changing quality to level:', level);
 
-        hls.currentLevel = level;
+        // Set the quality level in HLS.js
+        hls.currentLevel = parseInt(level);
         
         // Save preference if not auto
         if (level !== -1) {

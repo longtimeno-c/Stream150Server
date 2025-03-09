@@ -130,16 +130,11 @@
                     backBufferLength: 90,
                     // Quality settings
                     capLevelToPlayerSize: true,
-                    startLevel: -1,
+                    startLevel: -1, // Auto quality
                     abrEwmaDefaultEstimate: 500000,
                     abrMaxWithRealBitrate: true,
-                    // Force specific quality levels
-                    levels: [
-                        { height: 1080, bitrate: 5000000 },  // 1080p (5Mbps)
-                        { height: 720, bitrate: 2500000 },   // 720p (2.5Mbps)
-                        { height: 480, bitrate: 1000000 }    // 480p (1Mbps)
-                    ],
-                    // Other settings...
+                    // Don't force specific quality levels here, let the server provide them
+                    // or use our defaults from QualityManager
                     xhrSetup: function(xhr, url) {
                         xhr.withCredentials = false;
                     },
@@ -391,6 +386,56 @@
                 liveBtn.classList.add('inactive');
             }
         });
+
+        // Function to toggle fullscreen
+        function toggleFullscreen() {
+            const player = document.querySelector('.video-player');
+            
+            if (!document.fullscreenElement && 
+                !document.webkitFullscreenElement && 
+                !document.mozFullScreenElement) {
+                // Request fullscreen
+                if (player.requestFullscreen) {
+                    player.requestFullscreen();
+                } else if (player.webkitRequestFullscreen) {
+                    player.webkitRequestFullscreen();
+                } else if (player.mozRequestFullScreen) {
+                    player.mozRequestFullScreen();
+                } else if (player.msRequestFullscreen) {
+                    player.msRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Add fullscreen change event listeners
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        function handleFullscreenChange() {
+            const player = document.querySelector('.video-player');
+            if (!document.fullscreenElement && 
+                !document.webkitFullscreenElement && 
+                !document.mozFullScreenElement) {
+                // Exited fullscreen
+                player.classList.remove('fullscreen');
+            } else {
+                // Entered fullscreen
+                player.classList.add('fullscreen');
+            }
+        }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
