@@ -554,7 +554,7 @@ body {
         height: calc(100vh - 112px);
         position: sticky;
         top: 72px;
-        max-width: 350px;
+        max-width: 320px;
     }
     
     .chat-box {
@@ -693,27 +693,36 @@ body {
 }
 
 .below-chat-countdown {
-    margin: 0 10px 10px;
-    padding: 12px;
+    margin: 0 8px 8px;
+    padding: 10px;
     text-align: center;
     background: linear-gradient(to right, #1e1e1e, #252525, #1e1e1e);
-    border-radius: 8px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     position: relative;
     overflow: hidden;
     border: 1px solid #333;
     transition: all 0.3s ease;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
+    width: calc(100% - 16px);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
-.below-chat-countdown:hover {
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+.countdown-value {
+    background: rgba(30, 144, 255, 0.15);
+    padding: 5px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(30, 144, 255, 0.3);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    min-width: 1.6em;
+    text-align: center;
+    display: inline-block;
+    position: relative;
 }
 
-/* Countdown component styles */
 .countdown-label {
     font-size: 0.8rem;
     text-transform: uppercase;
@@ -725,50 +734,39 @@ body {
 }
 
 .countdown-time {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: bold;
     letter-spacing: 1px;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .countdown-unit {
     display: inline-flex;
     flex-direction: column;
     align-items: center;
-    min-width: 45px;
-}
-
-.countdown-value {
-    background: rgba(30, 144, 255, 0.15);
-    padding: 6px 6px;
-    border-radius: 6px;
-    border: 1px solid rgba(30, 144, 255, 0.3);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    font-family: 'Courier New', monospace;
-    min-width: 1.8em;
-    text-align: center;
-    display: inline-block;
+    min-width: 44px;
+    margin-bottom: 4px;
 }
 
 .countdown-unit:hover .countdown-value {
     background: rgba(30, 144, 255, 0.25);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .countdown-separator {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: #666;
     margin: 0 1px;
     align-self: center;
 }
 
 .countdown-unit-label {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     color: #999;
     text-transform: uppercase;
     margin-top: 4px;
@@ -776,12 +774,14 @@ body {
 }
 
 .countdown-milliseconds {
-    font-size: 0.8rem;
-    color: #666;
-    min-width: 2.5em;
+    font-size: 0.5rem;
+    color: #888;
     display: inline-block;
-    text-align: left;
     font-family: 'Courier New', monospace;
+    vertical-align: baseline;
+    margin-left: 0;
+    position: relative;
+    top: -0.1em;
 }
 
 .countdown-status {
@@ -839,7 +839,7 @@ body {
     
     .below-chat-countdown:hover {
         transform: none !important;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
     }
     
     .countdown-unit:hover .countdown-value {
@@ -1924,23 +1924,65 @@ body {
 
 /* Add responsive scaling for countdown on different desktop sizes */
 @media (min-width: 1200px) {
+    .chat-container {
+        max-width: 350px;
+        width: 350px;
+    }
+    
+    .main-container {
+        gap: 30px;
+    }
+    
     .below-chat-countdown {
-        max-width: 90%;
-        margin: 0 auto 10px;
+        max-width: 100%;
+        width: calc(100% - 16px);
+        margin: 0 8px 8px;
     }
 }
 
 @media (min-width: 1600px) {
+    .chat-container {
+        max-width: 380px;
+        width: 380px;
+    }
+    
+    .main-container {
+        gap: 35px;
+    }
+    
     .below-chat-countdown {
-        max-width: 85%;
-        margin: 0 auto 10px;
+        max-width: 100%;
+        width: calc(100% - 16px);
+        margin: 0 8px 8px;
     }
     
     .countdown-time {
-        gap: 8px;
+        gap: 6px;
     }
     
     .countdown-unit {
-        min-width: 55px;
+        min-width: 42px;
+    }
+    
+    .countdown-value {
+        padding: 6px 7px;
+    }
+    
+    .countdown-label {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 1024px) and (min-width: 768px) {
+    .countdown-unit {
+        min-width: 40px;
+    }
+    
+    .countdown-value {
+        padding: 5px 7px;
+    }
+    
+    .countdown-time {
+        gap: 5px;
     }
 }
