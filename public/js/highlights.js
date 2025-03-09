@@ -946,21 +946,37 @@ window.HighlightsManager = (function() {
     }
 
     /**
-     * Add a highlight to the collection and update UI
-     * @param {Object} highlight - The highlight data
+     * Add a highlight
+     * @param {Object} highlight - The highlight to add
      */
     function addHighlight(highlight) {
+        console.log('Adding highlight:', highlight);
+        
         // Add to user highlights
         userHighlights.push(highlight);
         
-        // Save to local storage
+        // Save to storage
         saveHighlights();
         
         // Add to UI
-        addHighlightCard(highlight);
+        clearHighlightsUI();
         
-        // Update count display
+        // Get all highlights
+        const allHighlights = getAllHighlights();
+        
+        // Sort highlights by timestamp (newest first)
+        const sortedHighlights = sortHighlightsByTimestamp(allHighlights);
+        
+        // Add highlights to UI
+        sortedHighlights.forEach(highlight => {
+            addHighlightCard(highlight);
+        });
+        
+        // Update highlight count display
         updateHighlightCountDisplay();
+        
+        // Enforce highlight limit
+        enforceHighlightLimit();
         
         // Dispatch event for server integration
         dispatchHighlightAddedEvent(highlight);
@@ -1104,6 +1120,36 @@ window.HighlightsManager = (function() {
     }
 
     /**
+     * Get timestamp from a highlight
+     * @param {Object} highlight - The highlight object
+     * @returns {number} - The timestamp
+     */
+    function getHighlightTimestamp(highlight) {
+        // Use timestamp property if available
+        if (highlight.timestamp) return highlight.timestamp;
+        
+        // Try to extract timestamp from ID
+        if (highlight.id) {
+            const idMatch = highlight.id.match(/highlight-(\d+)/);
+            if (idMatch) return parseInt(idMatch[1]);
+        }
+        
+        // Default to current time if no timestamp found
+        return Date.now();
+    }
+    
+    /**
+     * Sort highlights by timestamp (newest first)
+     * @param {Array} highlights - The highlights to sort
+     * @returns {Array} - Sorted highlights
+     */
+    function sortHighlightsByTimestamp(highlights) {
+        return [...highlights].sort((a, b) => {
+            return getHighlightTimestamp(b) - getHighlightTimestamp(a);
+        });
+    }
+
+    /**
      * Load highlights from local storage
      */
     function loadHighlights() {
@@ -1113,8 +1159,14 @@ window.HighlightsManager = (function() {
         // Load user highlights from storage
         loadUserHighlights();
         
-        // Add sample highlights first
-        sampleHighlights.forEach(highlight => {
+        // Get all highlights
+        const allHighlights = getAllHighlights();
+        
+        // Sort highlights by timestamp (newest first)
+        const sortedHighlights = sortHighlightsByTimestamp(allHighlights);
+        
+        // Add highlights to UI
+        sortedHighlights.forEach(highlight => {
             addHighlightCard(highlight);
         });
         
@@ -1212,8 +1264,8 @@ window.HighlightsManager = (function() {
         // Clear existing highlights
         clearHighlightsUI();
         
-        // Add each highlight from the server
-        serverHighlights.forEach(highlight => {
+        // Process each highlight to ensure it has a timestamp
+        const processedHighlights = serverHighlights.map(highlight => {
             // Ensure the highlight has a timestamp if it has a date
             if (!highlight.timestamp && highlight.date && highlight.date !== 'Just now') {
                 // Try to parse the date string to get a timestamp
@@ -1227,12 +1279,32 @@ window.HighlightsManager = (function() {
                 }
             }
             
-            // Add the highlight to the UI
+            // If still no timestamp, try to extract from ID
+            if (!highlight.timestamp && highlight.id) {
+                const idMatch = highlight.id.match(/highlight-(\d+)/);
+                if (idMatch) {
+                    highlight.timestamp = parseInt(idMatch[1]);
+                }
+            }
+            
+            // If still no timestamp, use current time
+            if (!highlight.timestamp) {
+                highlight.timestamp = Date.now();
+            }
+            
+            return highlight;
+        });
+        
+        // Sort highlights by timestamp (newest first)
+        const sortedHighlights = sortHighlightsByTimestamp(processedHighlights);
+        
+        // Add each highlight to the UI
+        sortedHighlights.forEach(highlight => {
             addHighlightCard(highlight);
         });
         
         // Save the highlights to local storage
-        userHighlights = serverHighlights;
+        userHighlights = processedHighlights;
         saveHighlights();
         
         // Update highlight dates periodically
