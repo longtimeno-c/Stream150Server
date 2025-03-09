@@ -743,6 +743,98 @@ window.HighlightsManager = (function() {
     }
 
     /**
+     * Format a date for display in highlights
+     * @param {Date|number|string} date - The date to format (Date object, timestamp, or ISO string)
+     * @returns {string} - Formatted date string (e.g., "2 hours ago", "Yesterday", "June 15, 2024")
+     */
+    function formatHighlightDate(date) {
+        // Convert input to Date object
+        const dateObj = date instanceof Date ? date : new Date(date);
+        
+        // Check if the date is valid
+        if (isNaN(dateObj.getTime())) {
+            return 'Unknown date';
+        }
+        
+        const now = new Date();
+        const diffMs = now - dateObj;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+        const diffMonth = (now.getMonth() + now.getFullYear() * 12) - (dateObj.getMonth() + dateObj.getFullYear() * 12);
+        
+        // Just now: less than 1 minute ago
+        if (diffMin < 1) {
+            return 'Just now';
+        }
+        
+        // Minutes: 1-59 minutes ago
+        if (diffMin < 60) {
+            return `${diffMin} ${diffMin === 1 ? 'minute' : 'minutes'} ago`;
+        }
+        
+        // Hours: 1-23 hours ago
+        if (diffHour < 24) {
+            return `${diffHour} ${diffHour === 1 ? 'hour' : 'hours'} ago`;
+        }
+        
+        // Yesterday: 1 day ago, but still yesterday
+        if (diffDay === 1 && now.getDate() !== dateObj.getDate()) {
+            return 'Yesterday';
+        }
+        
+        // Days: 1-6 days ago
+        if (diffDay < 7) {
+            return `${diffDay} ${diffDay === 1 ? 'day' : 'days'} ago`;
+        }
+        
+        // Last week: 1 week ago
+        if (diffDay < 14) {
+            return '1 week ago';
+        }
+        
+        // Weeks: 2-4 weeks ago
+        if (diffDay < 30) {
+            const weeks = Math.floor(diffDay / 7);
+            return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+        }
+        
+        // Months: 1-11 months ago
+        if (diffMonth < 12) {
+            return `${diffMonth} ${diffMonth === 1 ? 'month' : 'months'} ago`;
+        }
+        
+        // Years: 1+ years ago
+        const years = Math.floor(diffMonth / 12);
+        return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+    }
+
+    /**
+     * Update the dates displayed on highlight cards
+     */
+    function updateHighlightDates() {
+        // Get all highlights
+        const highlights = getAllHighlights();
+        
+        // Get all highlight cards
+        const highlightCards = document.querySelectorAll('.highlight-card:not(.upload-card)');
+        
+        // Update each card's date display
+        highlightCards.forEach(card => {
+            const highlightId = card.dataset.id;
+            const highlight = highlights.find(h => h.id === highlightId);
+            
+            if (highlight && highlight.timestamp) {
+                const dateElement = card.querySelector('.highlight-date');
+                if (dateElement) {
+                    dateElement.textContent = formatHighlightDate(highlight.timestamp);
+                }
+            }
+        });
+    }
+
+    /**
      * Handle upload form submission
      * @param {Event} event - The submit event
      */
@@ -828,12 +920,17 @@ window.HighlightsManager = (function() {
             return;
         }
         
+        // Get current timestamp
+        const now = new Date();
+        const timestamp = now.getTime();
+        
         // Create new highlight object
         const newHighlight = {
-            id: 'highlight-' + Date.now(),
+            id: 'highlight-' + timestamp,
             title,
             duration: displayDuration, // Use the display duration
-            date: 'Just now',
+            date: formatHighlightDate(now),
+            timestamp: timestamp, // Store the actual timestamp
             thumbnailUrl,
             videoUrl,
             type,
@@ -936,103 +1033,65 @@ window.HighlightsManager = (function() {
      * @param {Object} highlight - The highlight data
      */
     function addHighlightCard(highlight) {
-        console.log('Adding highlight card to UI:', highlight);
-        
-        // Create a new highlight card element
+        // Create highlight card element
         const card = document.createElement('div');
-        card.className = highlight.type === 'youtube' ? 'highlight-card youtube-embed' : 'highlight-card';
-        card.setAttribute('data-id', highlight.id);
+        card.className = 'highlight-card';
+        card.dataset.id = highlight.id;
         
-        // Create the card content
-        let thumbnailHtml = '';
-        
+        // Add YouTube-specific class if it's a YouTube video
         if (highlight.type === 'youtube') {
-            // Handle both regular YouTube videos and live streams
-            const isLiveStream = highlight.isLiveStream || 
-                               (highlight.videoUrl && highlight.videoUrl.includes('/live/'));
-            
-            // Determine what to display for duration
-            let displayDuration = highlight.duration;
-            if (isLiveStream && displayDuration !== 'Live') {
-                displayDuration = 'Live';
-            }
-            
-            thumbnailHtml = `
-                <div class="highlight-thumbnail youtube-preview" data-video-id="${highlight.videoId || ''}">
-                    <img src="${highlight.thumbnailUrl}" alt="${highlight.title}" class="youtube-thumbnail">
-                    <div class="highlight-duration">${displayDuration}</div>
-                    <div class="highlight-play-button">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                    </div>
-                </div>
-            `;
-        } else {
-            thumbnailHtml = `
-                <div class="highlight-thumbnail">
-                    ${highlight.thumbnailUrl ? `<img src="${highlight.thumbnailUrl}" alt="${highlight.title}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">` : ''}
-                    <div class="highlight-duration">${highlight.duration}</div>
-                    <div class="highlight-play-button">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                    </div>
-                </div>
-            `;
+            card.classList.add('youtube-embed');
         }
         
-        // Add delete button for admin - always include this HTML for all highlight types
-        const adminControlsHtml = isAdmin ? `
-            <div class="highlight-admin-controls">
-                <button class="highlight-delete-btn" title="Delete highlight">×</button>
-            </div>
-        ` : '';
+        // Format the date if we have a timestamp but no formatted date
+        let displayDate = highlight.date;
+        if (highlight.timestamp && (!highlight.date || highlight.date === 'Just now')) {
+            displayDate = formatHighlightDate(highlight.timestamp);
+        }
         
+        // Create card HTML
         card.innerHTML = `
-            ${thumbnailHtml}
+            <div class="highlight-thumbnail${highlight.type === 'youtube' ? ' youtube-preview' : ''}"${highlight.videoId ? ` data-video-id="${highlight.videoId}"` : ''}>
+                <img src="${highlight.thumbnailUrl}" alt="${highlight.title}" class="${highlight.type === 'youtube' ? 'youtube-thumbnail' : ''}">
+                <div class="highlight-duration">${highlight.duration}</div>
+                <div class="highlight-play-button">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </div>
+            </div>
             <div class="highlight-info">
                 <h4>${highlight.title}</h4>
-                <span class="highlight-date">${highlight.date}</span>
+                <span class="highlight-date">${displayDate}</span>
             </div>
-            ${adminControlsHtml}
         `;
         
-        // Add event listener for playing
+        // Add click event listener
         if (highlight.type === 'youtube') {
-            card.addEventListener('click', handleYoutubeClick);
+            card.addEventListener('click', function() {
+                openYoutubeModal(highlight.videoId);
+            });
         } else {
             card.addEventListener('click', handleHighlightClick);
         }
         
-        // Add event listener for delete button if admin
+        // Add to highlights container
+        highlightsContainer.appendChild(card);
+        
+        // Update highlight count display
+        updateHighlightCountDisplay();
+        
+        // If admin, add delete button
         if (isAdmin) {
-            console.log('Adding delete button event listener for highlight:', highlight.id);
-            const deleteBtn = card.querySelector('.highlight-delete-btn');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', function(e) {
-                    e.stopPropagation(); // Prevent triggering the card click
-                    e.preventDefault();  // Prevent any default behavior
-                    
-                    console.log('Delete button clicked for highlight:', highlight.id);
-                    
-                    if (confirm(`Delete highlight "${highlight.title}"?`)) {
-                        removeHighlight(highlight.id);
-                    }
-                });
-            } else {
-                console.error('Delete button not found for highlight:', highlight.id);
-            }
-        }
-        
-        // Find the upload card
-        const uploadCard = document.querySelector('.highlight-card.upload-card');
-        
-        // Insert the new card before the upload card
-        if (uploadCard && highlightsContainer) {
-            highlightsContainer.insertBefore(card, uploadCard);
-        } else if (highlightsContainer) {
-            highlightsContainer.appendChild(card);
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'highlight-delete-btn';
+            deleteButton.innerHTML = '&times;';
+            deleteButton.title = 'Delete highlight';
+            deleteButton.addEventListener('click', function(event) {
+                event.stopPropagation(); // Prevent card click
+                removeHighlight(highlight.id);
+            });
+            card.appendChild(deleteButton);
         }
     }
 
@@ -1082,21 +1141,33 @@ window.HighlightsManager = (function() {
     }
 
     /**
-     * Enforce the maximum number of highlights
+     * Enforce the highlight limit by removing the oldest highlights
      */
     function enforceHighlightLimit() {
         const allHighlights = getAllHighlights();
         
         if (allHighlights.length > CONFIG.MAX_HIGHLIGHTS) {
-            // Remove excess user highlights
-            const excess = allHighlights.length - CONFIG.MAX_HIGHLIGHTS;
-            userHighlights = userHighlights.slice(0, Math.max(0, userHighlights.length - excess));
+            console.log(`Enforcing highlight limit: ${allHighlights.length} > ${CONFIG.MAX_HIGHLIGHTS}`);
             
-            // Save to storage
-            saveHighlights();
+            // Sort highlights by ID (which contains timestamp) to find the oldest
+            const sortedHighlights = [...allHighlights].sort((a, b) => {
+                // Extract timestamp from ID or use timestamp property
+                const getTimestamp = (highlight) => {
+                    if (highlight.timestamp) return highlight.timestamp;
+                    
+                    const idMatch = highlight.id.match(/highlight-(\d+)/);
+                    return idMatch ? parseInt(idMatch[1]) : 0;
+                };
+                
+                return getTimestamp(a) - getTimestamp(b);
+            });
             
-            // Reload UI
-            loadHighlights();
+            // Remove oldest highlights until we're under the limit
+            while (sortedHighlights.length > CONFIG.MAX_HIGHLIGHTS) {
+                const oldestHighlight = sortedHighlights.shift();
+                console.log('Removing oldest highlight:', oldestHighlight.id);
+                removeHighlight(oldestHighlight.id);
+            }
         }
     }
 
@@ -1138,14 +1209,34 @@ window.HighlightsManager = (function() {
         // Set the flag to indicate we're using server storage
         useServerStorage = true;
         
-        // Replace user highlights with server highlights
-        userHighlights = serverHighlights || [];
+        // Clear existing highlights
+        clearHighlightsUI();
         
-        // Save to local storage as a backup
+        // Add each highlight from the server
+        serverHighlights.forEach(highlight => {
+            // Ensure the highlight has a timestamp if it has a date
+            if (!highlight.timestamp && highlight.date && highlight.date !== 'Just now') {
+                // Try to parse the date string to get a timestamp
+                try {
+                    const dateObj = new Date(highlight.date);
+                    if (!isNaN(dateObj.getTime())) {
+                        highlight.timestamp = dateObj.getTime();
+                    }
+                } catch (e) {
+                    console.error('Error parsing date:', e);
+                }
+            }
+            
+            // Add the highlight to the UI
+            addHighlightCard(highlight);
+        });
+        
+        // Save the highlights to local storage
+        userHighlights = serverHighlights;
         saveHighlights();
         
-        // Reload the UI
-        loadHighlights();
+        // Update highlight dates periodically
+        startDateUpdateInterval();
     }
     
     /**
@@ -1195,6 +1286,26 @@ window.HighlightsManager = (function() {
         // Track that this removal has been dispatched
         dispatchedRemovals.add(id);
     }
+
+    // Set up an interval to update highlight dates periodically
+    let dateUpdateInterval = null;
+    function startDateUpdateInterval() {
+        // Clear any existing interval
+        if (dateUpdateInterval) {
+            clearInterval(dateUpdateInterval);
+        }
+        
+        // Update dates immediately
+        updateHighlightDates();
+        
+        // Set up interval to update dates every minute
+        dateUpdateInterval = setInterval(updateHighlightDates, 60000);
+    }
+
+    // Initialize date updates when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        startDateUpdateInterval();
+    });
 
     // Public API
     return {

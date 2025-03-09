@@ -1286,8 +1286,17 @@ body {
 }
 
 .highlight-date {
+    color: #aaa;
     font-size: 0.8rem;
-    color: #aaaaaa;
+    display: block;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Add a hover effect to show the full date */
+.highlight-card:hover .highlight-date {
+    color: #fff;
+    transition: color 0.2s ease;
 }
 
 /* Mobile-specific styles */
