@@ -1185,3 +1185,526 @@ body {
         padding: 15px 0;
     }
 }
+
+/* Stream Highlights Section */
+.stream-highlights {
+    display: none; /* Hidden by default, shown only on desktop */
+    margin-top: 20px;
+    background: #2d2d2d;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.highlights-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #ffffff;
+    border-bottom: 2px solid #404040;
+    padding-bottom: 10px;
+}
+
+.highlights-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.highlight-card {
+    background: #333333;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.highlight-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.highlight-thumbnail {
+    position: relative;
+    height: 0;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    background: #222;
+    background-image: linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444), 
+                      linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+}
+
+.highlight-duration {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
+
+.highlight-play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.highlight-play-button svg {
+    fill: white;
+    width: 24px;
+    height: 24px;
+}
+
+.highlight-card:hover .highlight-play-button {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.highlight-info {
+    padding: 10px;
+}
+
+.highlight-info h4 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.highlight-date {
+    font-size: 0.8rem;
+    color: #aaaaaa;
+}
+
+/* Show highlights only on desktop */
+@media (min-width: 768px) {
+    .stream-highlights {
+        display: block;
+    }
+}
+
+/* Adjust for smaller desktop screens */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .highlights-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* YouTube Embed Styles */
+.youtube-embed {
+    position: relative;
+}
+
+.youtube-preview {
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.youtube-thumbnail {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.youtube-embed:hover .youtube-thumbnail {
+    transform: scale(1.05);
+}
+
+.youtube-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.youtube-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.youtube-modal-content {
+    width: 80%;
+    max-width: 800px;
+    position: relative;
+}
+
+.youtube-iframe-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+}
+
+.youtube-iframe-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.youtube-modal-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: white;
+    font-size: 30px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+/* Upload Card Styles */
+.upload-card {
+    background: linear-gradient(135deg, #3a3a3a, #2d2d2d);
+    border: 2px dashed #555;
+    transition: all 0.3s ease;
+}
+
+.upload-card:hover {
+    border-color: #ff9966;
+    background: linear-gradient(135deg, #3a3a3a, #333);
+}
+
+.upload-thumbnail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    transition: color 0.3s ease;
+}
+
+.upload-card:hover .upload-icon {
+    color: #ff9966;
+}
+
+/* Upload Modal Styles */
+.upload-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.upload-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.upload-modal-content {
+    background: #2d2d2d;
+    border-radius: 8px;
+    padding: 25px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.upload-modal h2 {
+    margin-top: 0;
+    color: #fff;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+.upload-form-group {
+    margin-bottom: 20px;
+}
+
+.upload-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #ddd;
+    font-weight: 500;
+}
+
+.upload-form-group input[type="text"],
+.upload-form-group input[type="url"] {
+    width: 100%;
+    padding: 10px;
+    background: #333;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.upload-form-group input:focus {
+    outline: none;
+    border-color: #ff9966;
+}
+
+.file-upload-area {
+    border: 2px dashed #555;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+}
+
+.file-upload-area:hover {
+    border-color: #ff9966;
+    background: rgba(255, 153, 102, 0.05);
+}
+
+.file-upload-area svg {
+    width: 40px;
+    height: 40px;
+    color: #aaa;
+    margin-bottom: 10px;
+}
+
+.file-upload-area p {
+    margin: 0;
+    color: #aaa;
+}
+
+.file-upload-area input[type="file"] {
+    display: none;
+}
+
+.upload-preview {
+    margin-top: 15px;
+    display: none;
+}
+
+.upload-preview img {
+    max-width: 100%;
+    max-height: 150px;
+    border-radius: 4px;
+}
+
+.upload-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.upload-modal-buttons button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-cancel {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ddd;
+}
+
+.upload-cancel:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.upload-submit {
+    background: linear-gradient(to right, #ff4d4d, #ff9966);
+    border: none;
+    color: white;
+}
+
+.upload-submit:hover {
+    opacity: 0.9;
+}
+
+.upload-submit:disabled {
+    background: #555;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.upload-or-text {
+    text-align: center;
+    margin: 15px 0;
+    color: #777;
+    position: relative;
+}
+
+.upload-or-text::before,
+.upload-or-text::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #444;
+}
+
+.upload-or-text::before {
+    left: 0;
+}
+
+.upload-or-text::after {
+    right: 0;
+}
+
+.youtube-url-input {
+    position: relative;
+}
+
+.youtube-url-input input {
+    padding-left: 35px;
+}
+
+.youtube-url-input svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: #ff0000;
+}
+
+/* Admin Controls for Highlights */
+.highlight-admin-controls {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    display: flex;
+    gap: 5px;
+}
+
+.highlight-card:hover .highlight-admin-controls {
+    opacity: 1;
+}
+
+.highlight-delete-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.highlight-delete-btn:hover {
+    background: rgba(255, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+/* Position fix for highlight cards */
+.highlight-card {
+    position: relative;
+}
+
+/* Admin message for non-admin users */
+.admin-message {
+    text-align: center;
+    color: #aaa;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    font-style: italic;
+}
+
+/* Highlight count indicator */
+.highlights-count {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.count-limit {
+    color: #ff4d4d;
+    font-weight: bold;
+}
+
+/* Admin highlight effect */
+@keyframes admin-highlight-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 153, 102, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 153, 102, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 153, 102, 0); }
+}
+
+.admin-highlight {
+    animation: admin-highlight-pulse 1s ease-out 2;
+    border: 2px solid #ff9966 !important;
+}
+
+/* Admin message styles */
+.admin-message-active {
+    color: #ff9966;
+    font-weight: 500;
+    font-style: normal;
+}
+
+/* Debug button styles */
+.debug-btn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.debug-btn:hover {
+    background: #444;
+    border-color: #555;
+}
