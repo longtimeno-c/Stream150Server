@@ -694,7 +694,7 @@ body {
 
 .below-chat-countdown {
     margin: 0 10px 10px;
-    padding: 15px;
+    padding: 12px;
     text-align: center;
     background: linear-gradient(to right, #1e1e1e, #252525, #1e1e1e);
     border-radius: 8px;
@@ -708,40 +708,39 @@ body {
 
 .below-chat-countdown:hover {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px);
 }
 
 /* Countdown component styles */
 .countdown-label {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #1E90FF;
     font-weight: bold;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .countdown-time {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: bold;
     letter-spacing: 1px;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .countdown-unit {
     display: inline-flex;
     flex-direction: column;
     align-items: center;
-    min-width: 60px;
+    min-width: 50px;
 }
 
 .countdown-value {
     background: rgba(30, 144, 255, 0.15);
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-radius: 6px;
     border: 1px solid rgba(30, 144, 255, 0.3);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -759,22 +758,22 @@ body {
 }
 
 .countdown-separator {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     color: #666;
-    margin: 0 2px;
+    margin: 0 1px;
     align-self: center;
 }
 
 .countdown-unit-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: #999;
     text-transform: uppercase;
-    margin-top: 5px;
+    margin-top: 4px;
     letter-spacing: 0.5px;
 }
 
 .countdown-milliseconds {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: #666;
     min-width: 2.5em;
     display: inline-block;
@@ -1918,4 +1917,27 @@ body {
 .debug-btn:hover {
     background: #444;
     border-color: #555;
+}
+
+/* Add responsive scaling for countdown on different desktop sizes */
+@media (min-width: 1200px) {
+    .below-chat-countdown {
+        max-width: 90%;
+        margin: 0 auto 10px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .below-chat-countdown {
+        max-width: 85%;
+        margin: 0 auto 10px;
+    }
+    
+    .countdown-time {
+        gap: 8px;
+    }
+    
+    .countdown-unit {
+        min-width: 55px;
+    }
 }
