@@ -104,23 +104,21 @@
             const isProduction = window.location.hostname === 'watch.stream150.com';
             const protocol = isProduction ? 'https' : 'http';
             const wsProtocol = isProduction ? 'wss' : 'ws';
-            const host = window.location.host;  // This will include the port if any
+            const host = window.location.host;
             const baseUrl = isProduction ? '' : `${protocol}://${host}`;
             
-            // Configure stream URL (through Caddy's reverse proxy)
+            // Configure stream URL
             const hlsUrl = isProduction 
-                ? '/live/StreamtoME/index.m3u8'  // Update this path
-                : `${protocol}://localhost:8000/live/StreamtoME/index.m3u8`;  // This is correct
+                ? '/live/StreamtoME/index.m3u8'
+                : `${protocol}://localhost:8000/live/StreamtoME/index.m3u8`;
             
-            // WebSocket URL (through Caddy's reverse proxy)
             window.WS_URL = isProduction
-                ? `${wsProtocol}://${host}/ws`  // Production WebSocket through Caddy
-                : `${wsProtocol}://localhost:3001`;  // Direct in development
+                ? `${wsProtocol}://${host}/ws`
+                : `${wsProtocol}://localhost:3001`;
             
             let hls = null;
 
-            // Set video attributes for autoplay
-            video.muted = true; // Mute initially to bypass autoplay restrictions
+            video.muted = true;
             video.autoplay = true;
             
             if (Hls.isSupported()) {
@@ -130,10 +128,21 @@
                     enableWorker: true,
                     lowLatencyMode: true,
                     backBufferLength: 90,
+                    // Quality settings
+                    capLevelToPlayerSize: true,
+                    startLevel: -1,
+                    abrEwmaDefaultEstimate: 500000,
+                    abrMaxWithRealBitrate: true,
+                    // Force specific quality levels
+                    levels: [
+                        { height: 1080, bitrate: 5000000 },  // 1080p (5Mbps)
+                        { height: 720, bitrate: 2500000 },   // 720p (2.5Mbps)
+                        { height: 480, bitrate: 1000000 }    // 480p (1Mbps)
+                    ],
+                    // Other settings...
                     xhrSetup: function(xhr, url) {
                         xhr.withCredentials = false;
                     },
-                    // Updated configuration format
                     manifestLoadPolicy: {
                         default: {
                             maxTimeToFirstByteMs: null,
@@ -168,7 +177,6 @@
                     }
                 });
 
-                // Remove the source element to prevent conflicts
                 const sourceElement = video.querySelector('source');
                 if (sourceElement) {
                     video.removeChild(sourceElement);
@@ -177,33 +185,24 @@
 
                 console.log('🔄 Loading stream source:', hlsUrl);
 
-                hls.on(Hls.Events.MANIFEST_LOADING, () => {
-                    console.log('�� Attempting to load HLS manifest...');
-                });
-
                 hls.loadSource(hlsUrl);
                 hls.attachMedia(video);
 
-                // Make hls instance available globally for quality selection
-                window.hls = hls;
+                // Initialize quality manager
+                QualityManager.init(hls);
 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     console.log('✅ HLS manifest parsed, attempting playback');
+                    QualityManager.loadPreferredQuality();
                     
-                    // Try to play the video
                     const playPromise = video.play();
-                    
                     if (playPromise !== undefined) {
                         playPromise.then(() => {
-                            // Autoplay started successfully
                             console.log('✅ Autoplay started successfully');
-                            
-                            // Add unmute button for better user experience
                             if (video.muted) {
                                 showUnmutePrompt();
                             }
                         }).catch(error => {
-                            // Autoplay was prevented
                             console.log('❌ Autoplay prevented:', error);
                             showPlayButton();
                         });
@@ -403,6 +402,7 @@
     <script src="js/donations.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/countdown.js"></script>
+    <script src="js/quality.js"></script>
     <script>
         // Update username displays when the page loads
         document.addEventListener('DOMContentLoaded', function() {
