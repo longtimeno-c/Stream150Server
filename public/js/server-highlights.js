@@ -203,8 +203,39 @@
         // Ensure HighlightsManager is available
         ensureHighlightsManager();
         
+        // Process each highlight to ensure it has a timestamp
+        const processedHighlights = serverHighlights.map(highlight => {
+            // If the highlight doesn't have a timestamp but has an ID with a timestamp
+            if (!highlight.timestamp && highlight.id) {
+                const idMatch = highlight.id.match(/highlight-(\d+)/);
+                if (idMatch && idMatch[1]) {
+                    highlight.timestamp = parseInt(idMatch[1]);
+                }
+            }
+            
+            // If the highlight doesn't have a timestamp but has a date
+            if (!highlight.timestamp && highlight.date && highlight.date !== 'Just now') {
+                try {
+                    // Try to parse the date string
+                    const dateObj = new Date(highlight.date);
+                    if (!isNaN(dateObj.getTime())) {
+                        highlight.timestamp = dateObj.getTime();
+                    }
+                } catch (e) {
+                    console.error('Error parsing date:', e);
+                }
+            }
+            
+            // If we still don't have a timestamp, create one
+            if (!highlight.timestamp) {
+                highlight.timestamp = Date.now();
+            }
+            
+            return highlight;
+        });
+        
         // Update the highlights
-        window.HighlightsManager.updateFromServer(serverHighlights);
+        window.HighlightsManager.updateFromServer(processedHighlights);
     }
     
     /**
