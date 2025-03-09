@@ -379,10 +379,25 @@ const HighlightsManager = (function() {
         console.log('YouTube highlight clicked, video ID:', videoId);
         
         if (videoId) {
-            openYoutubeModal(videoId);
+            // On mobile, open in YouTube app if possible
+            if (isMobileDevice()) {
+                window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+            } else {
+                // On desktop, use the modal
+                openYoutubeModal(videoId);
+            }
         } else {
             console.error('No video ID found for YouTube highlight');
         }
+    }
+
+    /**
+     * Check if the current device is mobile
+     * @returns {boolean} - True if mobile device
+     */
+    function isMobileDevice() {
+        return (window.innerWidth <= 767) || 
+               (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
     }
 
     /**
@@ -441,8 +456,13 @@ const HighlightsManager = (function() {
         
         if (highlight) {
             if (highlight.type === 'youtube' && highlight.videoId) {
-                // Open YouTube video
-                openYoutubeModal(highlight.videoId);
+                // On mobile, open in YouTube app if possible
+                if (isMobileDevice()) {
+                    window.open(`https://www.youtube.com/watch?v=${highlight.videoId}`, '_blank');
+                } else {
+                    // On desktop, use the modal
+                    openYoutubeModal(highlight.videoId);
+                }
             } else if (highlight.videoUrl && highlight.videoUrl !== '#') {
                 // Open video URL if it's a valid URL
                 window.open(highlight.videoUrl, '_blank');
