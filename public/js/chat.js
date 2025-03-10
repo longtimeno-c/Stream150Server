@@ -11,13 +11,12 @@ let currentUsername = 'Anonymous';
 // Add filter toggle and explicit words list
 const ENABLE_FILTER = true; // Toggle this to enable/disable filtering
 const EXPLICIT_WORDS = [
-    'cunt', 'nigger', 'faggot', 'nigga'
+    'cunt', 'nigger', 'nigga',
     'bitch', 'whore', 'slut',
     'cock', 'dick', 'pussy',
-    'asshole', 'bastard', 'twat',
+    'asshole', 'twat',
     'kike', 'spic', 'chink',
-    'wank', 'prick', 'coon',
-    // Note: 'shit' and 'fuck' are intentionally not included as per request
+    'wank', 'coon',
 ];
 
 // Word filtering function
