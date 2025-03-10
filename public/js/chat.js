@@ -6,7 +6,33 @@ function getCookie(name) {
 let chatHistory = [];
 let autoScroll = true;
 const MAX_CHAT_MESSAGES = 100;
-let currentUsername = 'Anonymous'; // Default username
+let currentUsername = 'Anonymous';
+
+// Add filter toggle and explicit words list
+const ENABLE_FILTER = true; // Toggle this to enable/disable filtering
+const EXPLICIT_WORDS = [
+    'cunt', 'nigger', 'nigga',
+    'bitch', 'whore', 'slut',
+    'cock', 'dick', 'pussy',
+    'asshole', 'twat',
+    'kike', 'spic', 'chink',
+    'wank', 'coon',
+];
+
+// Word filtering function
+function filterMessage(message) {
+    if (!ENABLE_FILTER) return message;
+    
+    let words = message.split(' ');
+    words = words.map(word => {
+        const lowercaseWord = word.toLowerCase();
+        if (EXPLICIT_WORDS.includes(lowercaseWord)) {
+            return `${word.charAt(0)}***${word.charAt(word.length - 1)}`;
+        }
+        return word;
+    });
+    return words.join(' ');
+}
 
 // Make currentUsername globally accessible
 window.currentUsername = currentUsername;
@@ -201,8 +227,11 @@ function sendChat() {
     const chatInput = document.getElementById('chatInput');
     if (!chatInput) return;
     
-    const message = chatInput.value.trim();
+    let message = chatInput.value.trim();
     if (message) {
+        // Filter the message before sending
+        message = filterMessage(message);
+        
         // Get the current username from UserManager
         const username = UserManager.getUsername();
         
@@ -223,8 +252,11 @@ function sendMobileChat() {
     const mobileChatInput = document.getElementById('mobileChatInput');
     if (!mobileChatInput) return;
     
-    const message = mobileChatInput.value.trim();
+    let message = mobileChatInput.value.trim();
     if (message) {
+        // Filter the message before sending
+        message = filterMessage(message);
+        
         // Get the current username from UserManager
         const username = UserManager.getUsername();
         
@@ -242,4 +274,4 @@ function sendMobileChat() {
 }
 
 // Initialize chat when the page loads
-document.addEventListener('DOMContentLoaded', initializeChat); 
+document.addEventListener('DOMContentLoaded', initializeChat);
