@@ -9,6 +9,7 @@ dist/
 web-build/
 data/
 media/
+package-lock.json
 
 .env
 
