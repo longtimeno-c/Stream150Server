@@ -248,9 +248,7 @@ window.HighlightsManager = (function() {
         console.log('Username detection:');
         console.log('- Username:', username);
         console.log('- Source:', source);
-        console.log('- Admin username should be:', CONFIG.ADMIN_USERNAME);
         console.log('- Is admin:', isAdmin);
-        console.log('- Previous admin status:', previousAdminStatus);
         
         // If admin status changed, update the UI
         if (previousAdminStatus !== isAdmin) {
