@@ -552,6 +552,41 @@ body {
     z-index: 1000;
     flex-direction: column;
     padding: 15px;
+    box-sizing: border-box;
+    overflow: hidden; /* Prevent overflow */
+}
+
+.mobile-chat-overlay.active {
+    display: flex !important;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+#mobileChatBox {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Ensure mobile chat input container stays within bounds */
+.mobile-chat-overlay .chat-input-container {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 10px;
+}
+
+.mobile-chat-overlay .chat-input {
+    min-width: 0;
+    flex: 1;
+}
+
+.mobile-chat-overlay .chat-send-btn {
+    flex-shrink: 0;
 }
 
 .mobile-chat-header {
@@ -787,6 +822,19 @@ body {
         bottom: 0;
         width: 100%;
         flex-shrink: 0; /* Prevent shrinking */
+        box-sizing: border-box;
+        margin: 0; /* Remove margin to prevent overflow */
+    }
+    
+    .chat-input {
+        min-width: 0; /* Allow input to shrink */
+        font-size: 0.9rem; /* Slightly smaller font for mobile */
+    }
+    
+    .chat-send-btn {
+        padding: 8px 12px; /* Slightly smaller padding */
+        white-space: nowrap; /* Prevent button text from wrapping */
+        font-size: 0.9rem; /* Slightly smaller font for mobile */
     }
     
     .donation-tracker {
