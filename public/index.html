@@ -40,6 +40,8 @@
     <script src="js/highlights.js"></script>
     <script src="js/server-highlights.js"></script>
     <script src="js/highlights-debug.js"></script>
+    <link rel="stylesheet" href="css/polls.css">
+    <script src="js/polls.js"></script>
 </head>
 
 <body>
@@ -85,6 +87,14 @@
                         <option value="2">480p</option>
                     </select>
                 </div>
+            </div>
+            
+            <!-- Poll Container for Desktop -->
+            <div class="poll-container"></div>
+            
+            <!-- Poll Admin Controls -->
+            <div class="poll-admin-controls" id="pollAdminControls">
+                <button class="create-poll-btn" onclick="PollManager.createPoll()">Create Poll</button>
             </div>
             
             <!-- Stream Highlights Section - Desktop Only -->
@@ -151,6 +161,10 @@
                 </div>
                 <span class="chat-status"></span>
             </div>
+            
+            <!-- Poll Container for Mobile -->
+            <div class="mobile-poll-container"></div>
+            
             <div id="chatBox" class="chat-box"></div>
             <div class="chat-input-container">
                 <input type="text" id="chatInput" class="chat-input" placeholder="Send a message...">

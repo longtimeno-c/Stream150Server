@@ -5,11 +5,9 @@ const maxReconnectAttempts = 5;
 const reconnectDelay = 3000;
 
 function initializeWebSocket() {
-    // Determine WebSocket URL based on current environment
-    const isProduction = window.location.hostname === 'watch.stream150.com';
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const host = window.location.host;
-    const wsUrl = isProduction ? `${wsProtocol}://${host}/ws` : `ws://localhost:3001`;
+    // WebSocket setup
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
     
     console.log('Connecting to WebSocket:', wsUrl);
     
@@ -17,8 +15,10 @@ function initializeWebSocket() {
     socket = new WebSocket(wsUrl);
     window.socket = socket; // Make it globally available
     
-    socket.onopen = function() {
+    socket.onopen = () => {
         console.log('WebSocket connection established');
+        // Dispatch connection event
+        document.dispatchEvent(new CustomEvent('websocket-connected'));
         reconnectAttempts = 0;
         
         // Update UI to show connected state
@@ -28,14 +28,33 @@ function initializeWebSocket() {
         });
     };
     
-    socket.onmessage = function(event) {
+    socket.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
             console.log('Received WebSocket message:', data);
             
-            // Dispatch custom event for other modules to listen to
-            const wsEvent = new CustomEvent('ws-message', { detail: data });
-            document.dispatchEvent(wsEvent);
+            // Dispatch message event
+            document.dispatchEvent(new CustomEvent('websocket-message', {
+                detail: data
+            }));
+            
+            // Handle stream status updates
+            if (data.type === 'STREAM_STATUS') {
+                console.log('Stream status update received:', data.status);
+                if (typeof updateStreamStatus === 'function') {
+                    updateStreamStatus(data.status === 'LIVE');
+                } else {
+                    console.log('Stream status update functions not available');
+                }
+                if (typeof updateViewerCount === 'function' && data.viewers !== undefined) {
+                    updateViewerCount(data.viewers);
+                }
+            }
+            
+            // Handle viewer count updates
+            if (data.type === 'VIEWER_COUNT' && typeof updateViewerCount === 'function') {
+                updateViewerCount(data.viewers);
+            }
             
             // Handle specific message types directly
             switch(data.type) {
@@ -69,13 +88,17 @@ function initializeWebSocket() {
                         }
                     }
                     break;
+                case 'POLL_UPDATE':
+                case 'POLL_END':
+                    console.log('Poll message received:', data);
+                    break;
             }
         } catch (error) {
             console.error('Error processing WebSocket message:', error);
         }
     };
     
-    socket.onerror = function(error) {
+    socket.onerror = (error) => {
         console.error('WebSocket error:', error);
         
         // Update UI to show error state
@@ -85,7 +108,7 @@ function initializeWebSocket() {
         });
     };
     
-    socket.onclose = function() {
+    socket.onclose = () => {
         console.log('WebSocket connection closed');
         
         // Update UI to show disconnected state

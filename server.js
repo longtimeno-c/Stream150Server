@@ -5,7 +5,8 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
-const EventEmitter = require('events')
+const EventEmitter = require('events');
+const PollManager = require('./server/pollManager');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -310,6 +311,18 @@ wss.on('connection', (ws) => {
         status: isStreaming ? 'LIVE' : 'OFFLINE',
         viewers: viewerCount 
     }));
+
+    // Send current poll if exists
+    const currentPoll = PollManager.getCurrentPoll();
+    if (currentPoll) {
+        console.log('Sending current poll to new client:', currentPoll);
+        ws.send(JSON.stringify({
+            type: 'POLL_UPDATE',
+            poll: currentPoll
+        }));
+    } else {
+        console.log('No active poll to send to new client');
+    }
     
     // Send initial highlights
     ws.send(JSON.stringify({
@@ -358,9 +371,10 @@ wss.on('connection', (ws) => {
     });
     
     // Handle incoming messages
-    ws.on('message', (message) => {
+    ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
+            console.log('Received WebSocket message:', data);
             
             if (data.type === 'CHAT_MESSAGE') {
                 // Format the chat message
@@ -459,6 +473,42 @@ wss.on('connection', (ws) => {
                     type: 'HIGHLIGHTS_UPDATE',
                     highlights: highlights
                 }));
+            } else if (data.type === 'CREATE_POLL') {
+                console.log('Creating new poll:', data.poll);
+                if (data.poll) {
+                    const newPoll = await PollManager.createPoll(data.poll);
+                    // Broadcast the new poll to all clients
+                    broadcast({
+                        type: 'POLL_UPDATE',
+                        poll: newPoll
+                    });
+                }
+            } else if (data.type === 'SUBMIT_VOTE') {
+                console.log('Processing vote:', data);
+                if (data.pollId && typeof data.optionIndex === 'number' && data.username) {
+                    const updatedPoll = await PollManager.submitVote(data.pollId, data.optionIndex, data.username);
+                    if (updatedPoll) {
+                        broadcast({
+                            type: 'POLL_UPDATE',
+                            poll: updatedPoll
+                        });
+                    }
+                }
+            } else if (data.type === 'REQUEST_POLL_STATE') {
+                const currentPoll = PollManager.getCurrentPoll();
+                ws.send(JSON.stringify({
+                    type: 'POLL_UPDATE',
+                    poll: currentPoll
+                }));
+            } else if (data.type === 'REQUEST_RECENT_POLL') {
+                const recentPoll = PollManager.getMostRecentPoll();
+                if (recentPoll) {
+                    ws.send(JSON.stringify({
+                        type: 'POLL_UPDATE',
+                        poll: recentPoll,
+                        isActive: false
+                    }));
+                }
             }
         } catch (err) {
             console.error('Error processing message:', err);
@@ -486,6 +536,9 @@ function broadcast(message) {
         }
     });
 }
+
+// Make broadcast function globally available for other modules
+global.broadcast = broadcast;
 
 // Save chat history more frequently (every minute)
 setInterval(saveChatHistory, 60 * 1000);
@@ -642,6 +695,9 @@ fs.access(hlsDir, fs.constants.F_OK, (err) => {
         console.log('✅ HLS directory exists:', hlsDir);
     }
 });
+
+// Initialize PollManager when server starts
+PollManager.loadPolls();
 
 server.listen(3001, () => {
     const isProduction = process.env.NODE_ENV === 'production';
