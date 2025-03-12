@@ -75,9 +75,10 @@ function initializeWebSocket() {
         reconnectAttempts = 0;
         
         // Request initial states
+        console.log('Requesting initial states...');
+        socket.send(JSON.stringify({ type: 'REQUEST_STREAM_STATUS' }));
         socket.send(JSON.stringify({ type: 'REQUEST_POLL_STATE' }));
         socket.send(JSON.stringify({ type: 'REQUEST_CHAT_HISTORY' }));
-        socket.send(JSON.stringify({ type: 'REQUEST_STREAM_STATUS' }));
         
         // Update UI to show connected state
         document.querySelectorAll('.chat-status').forEach(el => {
@@ -176,10 +177,14 @@ function updateViewerCount(count) {
 
 // Add stream status update handler
 function handleStreamStatusUpdate(data) {
+    console.log('Handling stream status update:', data);
+    
     // Update stream status in the UI
     const streamStatusElement = document.getElementById('streamStatus');
     const streamIndicator = document.getElementById('streamIndicator');
     const streamStatusMobile = document.getElementById('streamStatusMobile');
+    const statusElement = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
     
     const isLive = data.status === 'LIVE';
     
@@ -199,6 +204,15 @@ function handleStreamStatusUpdate(data) {
         streamIndicator.className = isLive ? 'stream-indicator live' : 'stream-indicator offline';
     }
     
+    // Update main status elements
+    if (statusElement) {
+        statusElement.className = 'status-indicator ' + (isLive ? 'online' : 'offline');
+    }
+    
+    if (statusText) {
+        statusText.textContent = isLive ? 'LIVE' : 'OFFLINE';
+    }
+    
     // Update viewer count if provided
     if (typeof data.viewers !== 'undefined' && typeof updateViewerCount === 'function') {
         updateViewerCount(data.viewers);
@@ -208,6 +222,12 @@ function handleStreamStatusUpdate(data) {
     document.dispatchEvent(new CustomEvent('stream-status-changed', {
         detail: { isLive, viewers: data.viewers }
     }));
+    
+    // Update viewer count display visibility
+    const viewerCount = document.getElementById('viewerCount');
+    if (viewerCount) {
+        viewerCount.style.display = isLive ? 'block' : 'none';
+    }
 }
 
 // Initialize WebSocket when the page loads
