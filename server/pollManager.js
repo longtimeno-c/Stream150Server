@@ -132,6 +132,47 @@ async function endPoll() {
         pollData.pollHistory = pollData.pollHistory.slice(-10);
     }
 
+    // Create poll results message
+    const totalVotes = endedPoll.totalVotes;
+    const sortedOptions = [...endedPoll.options].sort((a, b) => b.votes - a.votes);
+    const winningOption = sortedOptions[0];
+    
+    // Format vote counts with proper pluralization
+    const formatVotes = (votes) => `${votes} ${votes === 1 ? 'vote' : 'votes'}`;
+    
+    // Create winner announcement
+    const winnerMessage = {
+        type: 'CHAT_MESSAGE',
+        platform: 'web',
+        username: 'Poll System',
+        message: `📊 Poll ended: "${endedPoll.question}" 🏆 Winner: ${winningOption.text}!`,
+        timestamp: new Date().toISOString()
+    };
+
+    // Create detailed results string
+    const resultsDetails = sortedOptions.map((option, index) => {
+        const percentage = totalVotes > 0 ? (option.votes / totalVotes * 100).toFixed(1) : 0;
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '•';
+        return `${medal} ${option.text} (${percentage}%, ${formatVotes(option.votes)})`;
+    }).join(' ║ ');
+    
+    const resultsMessage = {
+        type: 'CHAT_MESSAGE',
+        platform: 'web',
+        username: 'Poll System',
+        message: `📈 Results: ${resultsDetails} | Total: ${formatVotes(totalVotes)}`,
+        timestamp: new Date().toISOString()
+    };
+
+    // Broadcast both messages
+    if (global.broadcast) {
+        global.broadcast(winnerMessage);
+        // Small delay between messages for better readability
+        setTimeout(() => {
+            global.broadcast(resultsMessage);
+        }, 500);
+    }
+
     // Save to file
     await savePolls();
 
