@@ -77,6 +77,7 @@ function initializeWebSocket() {
         // Request initial states
         socket.send(JSON.stringify({ type: 'REQUEST_POLL_STATE' }));
         socket.send(JSON.stringify({ type: 'REQUEST_CHAT_HISTORY' }));
+        socket.send(JSON.stringify({ type: 'REQUEST_STREAM_STATUS' }));
         
         // Update UI to show connected state
         document.querySelectorAll('.chat-status').forEach(el => {
@@ -125,12 +126,8 @@ function initializeWebSocket() {
                     break;
                     
                 case 'STREAM_STATUS':
-                    if (typeof window.handleStreamStatusUpdate === 'function') {
-                        window.handleStreamStatusUpdate(data.status);
-                    }
-                    if (typeof updateViewerCount === 'function' && data.viewers !== undefined) {
-                        updateViewerCount(data.viewers);
-                    }
+                    console.log('Stream status update received:', data);
+                    handleStreamStatusUpdate(data);
                     break;
             }
         } catch (error) {
@@ -175,6 +172,42 @@ function updateViewerCount(count) {
     if (viewerCountElement) {
         viewerCountElement.textContent = count;
     }
+}
+
+// Add stream status update handler
+function handleStreamStatusUpdate(data) {
+    // Update stream status in the UI
+    const streamStatusElement = document.getElementById('streamStatus');
+    const streamIndicator = document.getElementById('streamIndicator');
+    const streamStatusMobile = document.getElementById('streamStatusMobile');
+    
+    const isLive = data.status === 'LIVE';
+    
+    // Update status text elements
+    if (streamStatusElement) {
+        streamStatusElement.textContent = isLive ? 'LIVE' : 'OFFLINE';
+        streamStatusElement.className = isLive ? 'status-live' : 'status-offline';
+    }
+    
+    if (streamStatusMobile) {
+        streamStatusMobile.textContent = isLive ? 'LIVE' : 'OFFLINE';
+        streamStatusMobile.className = isLive ? 'status-live' : 'status-offline';
+    }
+    
+    // Update stream indicator if it exists
+    if (streamIndicator) {
+        streamIndicator.className = isLive ? 'stream-indicator live' : 'stream-indicator offline';
+    }
+    
+    // Update viewer count if provided
+    if (typeof data.viewers !== 'undefined' && typeof updateViewerCount === 'function') {
+        updateViewerCount(data.viewers);
+    }
+    
+    // Dispatch stream status event for other components
+    document.dispatchEvent(new CustomEvent('stream-status-changed', {
+        detail: { isLive, viewers: data.viewers }
+    }));
 }
 
 // Initialize WebSocket when the page loads
