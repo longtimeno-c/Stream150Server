@@ -28,17 +28,26 @@ const PollManager = {
 
     setupWebSocket() {
         console.log('Setting up WebSocket listeners for polls...');
+        
         // Listen for poll-related WebSocket messages
-        document.addEventListener('websocket-message', (event) => {
+        document.addEventListener('ws-poll_update', (event) => {
             const data = event.detail;
-            console.log('Received WebSocket message:', data);
-            
-            if (data.type === 'POLL_UPDATE') {
-                console.log('Handling poll update:', data.poll);
-                this.handlePollUpdate(data.poll);
-            } else if (data.type === 'POLL_END') {
-                console.log('Handling poll end');
-                this.handlePollEnd();
+            console.log('Handling poll update:', data.poll);
+            this.handlePollUpdate(data.poll);
+        });
+
+        document.addEventListener('ws-poll_end', (event) => {
+            console.log('Handling poll end');
+            this.handlePollEnd();
+        });
+
+        // Listen for WebSocket connection to request initial poll state
+        document.addEventListener('websocket-connected', () => {
+            console.log('WebSocket connected, requesting poll state');
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.send(JSON.stringify({
+                    type: 'REQUEST_POLL_STATE'
+                }));
             }
         });
     },

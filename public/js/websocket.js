@@ -74,15 +74,9 @@ function initializeWebSocket() {
         document.dispatchEvent(new CustomEvent('websocket-connected'));
         reconnectAttempts = 0;
         
-        // Request current poll state when connection is established
-        socket.send(JSON.stringify({
-            type: 'REQUEST_POLL_STATE'
-        }));
-
-        // Request chat history
-        socket.send(JSON.stringify({
-            type: 'REQUEST_CHAT_HISTORY'
-        }));
+        // Request initial states
+        socket.send(JSON.stringify({ type: 'REQUEST_POLL_STATE' }));
+        socket.send(JSON.stringify({ type: 'REQUEST_CHAT_HISTORY' }));
         
         // Update UI to show connected state
         document.querySelectorAll('.chat-status').forEach(el => {
@@ -98,6 +92,11 @@ function initializeWebSocket() {
             
             // Dispatch message event for all messages
             document.dispatchEvent(new CustomEvent('websocket-message', {
+                detail: data
+            }));
+            
+            // Also dispatch specific event types for better modularity
+            document.dispatchEvent(new CustomEvent(`ws-${data.type.toLowerCase()}`, {
                 detail: data
             }));
             
@@ -126,11 +125,8 @@ function initializeWebSocket() {
                     break;
                     
                 case 'STREAM_STATUS':
-                    console.log('Stream status update received:', data.status);
                     if (typeof window.handleStreamStatusUpdate === 'function') {
                         window.handleStreamStatusUpdate(data.status);
-                    } else if (typeof window.updateStreamStatus === 'function') {
-                        window.updateStreamStatus(data.status === 'LIVE');
                     }
                     if (typeof updateViewerCount === 'function' && data.viewers !== undefined) {
                         updateViewerCount(data.viewers);
@@ -144,6 +140,7 @@ function initializeWebSocket() {
     
     socket.onerror = (error) => {
         console.error('WebSocket error:', error);
+        document.dispatchEvent(new CustomEvent('websocket-error', { detail: error }));
         
         // Update UI to show error state
         document.querySelectorAll('.chat-status').forEach(el => {
@@ -154,6 +151,7 @@ function initializeWebSocket() {
     
     socket.onclose = () => {
         console.log('WebSocket connection closed');
+        document.dispatchEvent(new CustomEvent('websocket-closed'));
         
         // Update UI to show disconnected state
         document.querySelectorAll('.chat-status').forEach(el => {
