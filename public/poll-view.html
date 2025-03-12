@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream150 - Poll Results</title>
+    <link rel="stylesheet" href="css/polls.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .fullscreen-poll {
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .poll-content h3 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+        }
+
+        .poll-option {
+            height: 60px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .poll-option-percentage {
+            font-size: 1.2em;
+        }
+
+        .poll-option-bar {
+            background: rgba(0, 123, 255, 0.5);
+        }
+
+        .total-votes {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+
+        .poll-status {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            color: #0077cc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .poll-ended {
+            opacity: 0.8;
+        }
+    </style>
+    <script src="js/websocket.js"></script>
+    <script>
+        let currentPoll = null;
+        let recentPoll = null;
+
+        function updatePoll(poll, isActive = true) {
+            if (isActive) {
+                currentPoll = poll;
+                if (!poll && recentPoll) {
+                    // Show the most recent poll if no active poll
+                    renderPoll(recentPoll, false);
+                    return;
+                }
+            } else {
+                recentPoll = poll;
+                if (!currentPoll) {
+                    // Show the recent poll if there's no active poll
+                    renderPoll(poll, false);
+                    return;
+                }
+            }
+
+            if (isActive) {
+                renderPoll(poll, true);
+            }
+        }
+
+        function renderPoll(poll, isActive) {
+            const pollContainer = document.querySelector('.fullscreen-poll');
+            if (!poll) {
+                pollContainer.innerHTML = '<h2 style="text-align: center; color: #666;">No polls available</h2>';
+                return;
+            }
+
+            const maxVotes = Math.max(...poll.options.map(opt => opt.votes));
+            
+            pollContainer.innerHTML = `
+                <div class="poll-status">${isActive ? 'Active Poll' : 'Most Recent Poll'}</div>
+                <div class="poll-content ${!isActive ? 'poll-ended' : ''}">
+                    <h3>${poll.question}</h3>
+                    <div class="poll-options">
+                        ${poll.options.map((option, index) => {
+                            const percentage = poll.totalVotes > 0 ? (option.votes / poll.totalVotes * 100).toFixed(1) : 0;
+                            const relativeWidth = maxVotes > 0 ? (option.votes / maxVotes * 100) : 0;
+                            
+                            return `
+                                <div class="poll-option voted">
+                                    <div class="poll-option-text">${option.text}</div>
+                                    <div class="poll-option-bar" style="width: ${relativeWidth}%"></div>
+                                    <div class="poll-option-percentage">${percentage}% (${option.votes})</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="total-votes">
+                        Total votes: ${poll.totalVotes}
+                        ${!isActive ? '<br><small>(Poll Ended)</small>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function requestPollData() {
+            // Request current poll state
+            window.socket.send(JSON.stringify({
+                type: 'REQUEST_POLL_STATE'
+            }));
+
+            // Request most recent poll from history
+            window.socket.send(JSON.stringify({
+                type: 'REQUEST_RECENT_POLL'
+            }));
+        }
+
+        // WebSocket setup
+        document.addEventListener('DOMContentLoaded', () => {
+            // Listen for WebSocket connection
+            document.addEventListener('websocket-connected', () => {
+                console.log('WebSocket connected, requesting poll data');
+                requestPollData();
+            });
+
+            // Listen for WebSocket messages
+            document.addEventListener('websocket-message', (event) => {
+                const data = event.detail;
+                if (data.type === 'POLL_UPDATE') {
+                    // Check if this is an active poll or recent poll update
+                    const isActive = data.isActive !== false; // If isActive is not explicitly false, treat as active
+                    updatePoll(data.poll, isActive);
+                } else if (data.type === 'POLL_END') {
+                    // Store the ended poll as recent
+                    if (currentPoll) {
+                        updatePoll(currentPoll, false);
+                    }
+                    // Clear the current poll
+                    currentPoll = null;
+                    // Show the recent poll if we have one
+                    if (recentPoll) {
+                        renderPoll(recentPoll, false);
+                    }
+                }
+            });
+
+            // If WebSocket is already connected (rare case), request data immediately
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                console.log('WebSocket already connected, requesting poll data');
+                requestPollData();
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="fullscreen-poll">
+        <h2 style="text-align: center; color: #666;">Loading poll data...</h2>
+    </div>
+</body>
+</html> 
