@@ -137,17 +137,21 @@ async function endPoll() {
     const sortedOptions = [...endedPoll.options].sort((a, b) => b.votes - a.votes);
     const winningOption = sortedOptions[0];
     
-    // Create detailed results string
-    const resultsDetails = sortedOptions.map(option => {
+    // Format vote counts with proper pluralization
+    const formatVotes = (votes) => `${votes} ${votes === 1 ? 'vote' : 'votes'}`;
+    
+    // Create detailed results string with better formatting
+    const resultsDetails = sortedOptions.map((option, index) => {
         const percentage = totalVotes > 0 ? (option.votes / totalVotes * 100).toFixed(1) : 0;
-        return `${option.text}: ${percentage}% (${option.votes} votes)`;
-    }).join(' | ');
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '  ';
+        return `${medal} ${option.text}: ${percentage}% (${formatVotes(option.votes)})`;
+    }).join('\n');
     
     const resultsMessage = {
         type: 'CHAT_MESSAGE',
         platform: 'web',
-        username: 'System',
-        message: `📊 Poll ended: "${endedPoll.question}"\n📈 Results: ${resultsDetails}\n🏆 Winner: "${winningOption.text}" with ${winningOption.votes} votes!`,
+        username: 'Poll System',
+        message: `📊 Poll Results: "${endedPoll.question}"\n\n${resultsDetails}\n\n📈 Total Votes: ${formatVotes(totalVotes)}`,
         timestamp: new Date().toISOString()
     };
 
