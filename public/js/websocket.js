@@ -4,6 +4,59 @@ let reconnectAttempts = 0;
 const maxReconnectAttempts = 5;
 const reconnectDelay = 3000;
 
+// Chat message handler
+function handleChatMessage(message) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    const messageElement = createChatMessageElement(message);
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Chat history handler
+function handleChatHistory(messages) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    // Clear existing messages
+    chatMessages.innerHTML = '';
+
+    // Add each message
+    messages.forEach(message => {
+        const messageElement = createChatMessageElement(message);
+        chatMessages.appendChild(messageElement);
+    });
+
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Helper function to create chat message elements
+function createChatMessageElement(message) {
+    const div = document.createElement('div');
+    div.className = 'chat-message';
+    
+    const timestamp = new Date(message.timestamp).toLocaleTimeString();
+    const username = message.username || 'Anonymous';
+    const platform = message.platform || 'web';
+    
+    div.innerHTML = `
+        <span class="chat-timestamp">[${timestamp}]</span>
+        <span class="chat-username ${platform}">${username}:</span>
+        <span class="chat-text">${escapeHtml(message.message)}</span>
+    `;
+    
+    return div;
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function initializeWebSocket() {
     // WebSocket setup
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -24,6 +77,11 @@ function initializeWebSocket() {
         // Request current poll state when connection is established
         socket.send(JSON.stringify({
             type: 'REQUEST_POLL_STATE'
+        }));
+
+        // Request chat history
+        socket.send(JSON.stringify({
+            type: 'REQUEST_CHAT_HISTORY'
         }));
         
         // Update UI to show connected state
@@ -46,17 +104,11 @@ function initializeWebSocket() {
             // Handle different message types
             switch(data.type) {
                 case 'CHAT_MESSAGE':
-                    // Handle individual chat message
-                    if (typeof handleChatMessage === 'function') {
-                        handleChatMessage(data);
-                    }
+                    handleChatMessage(data);
                     break;
                     
                 case 'CHAT_HISTORY':
-                    // Handle chat history
-                    if (typeof handleChatHistory === 'function') {
-                        handleChatHistory(data.messages);
-                    }
+                    handleChatHistory(data.messages);
                     break;
                     
                 case 'POLL_UPDATE':
