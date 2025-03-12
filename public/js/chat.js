@@ -41,20 +41,22 @@ function initializeChat() {
     console.log('Initializing chat system...');
     
     // Listen for chat messages from the WebSocket
-    document.addEventListener('ws-message', function(e) {
+    document.addEventListener('ws-chat_message', function(e) {
         const data = e.detail;
-        if (data.type === 'CHAT_MESSAGE') {
-            addChatMessage(data);
-        } else if (data.type === 'CHAT_HISTORY') {
-            loadChatHistory(data.messages);
-        }
+        addChatMessage(data);
+    });
+    
+    document.addEventListener('ws-chat_history', function(e) {
+        const data = e.detail;
+        loadChatHistory(data.messages);
     });
     
     // Set up chat input handlers
     const chatInput = document.getElementById('chatInput');
     if (chatInput) {
         chatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
                 sendChat();
             }
         });
@@ -63,7 +65,8 @@ function initializeChat() {
     const mobileChatInput = document.getElementById('mobileChatInput');
     if (mobileChatInput) {
         mobileChatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
                 sendMobileChat();
             }
         });
@@ -72,14 +75,31 @@ function initializeChat() {
     // Listen for username changes
     document.addEventListener(UserManager.EVENTS.USERNAME_LOADED, function(e) {
         currentUsername = e.detail.username;
-        window.currentUsername = currentUsername; // Update global variable
+        window.currentUsername = currentUsername;
         console.log('Username loaded:', currentUsername);
     });
     
     document.addEventListener(UserManager.EVENTS.USERNAME_CHANGED, function(e) {
         currentUsername = e.detail.username;
-        window.currentUsername = currentUsername; // Update global variable
+        window.currentUsername = currentUsername;
         console.log('Username changed to:', currentUsername);
+    });
+    
+    // Listen for WebSocket connection status
+    document.addEventListener('websocket-connected', function() {
+        console.log('Chat system: WebSocket connected');
+        document.querySelectorAll('.chat-status').forEach(el => {
+            el.classList.add('connected');
+            el.classList.remove('disconnected');
+        });
+    });
+    
+    document.addEventListener('websocket-closed', function() {
+        console.log('Chat system: WebSocket disconnected');
+        document.querySelectorAll('.chat-status').forEach(el => {
+            el.classList.add('disconnected');
+            el.classList.remove('connected');
+        });
     });
 }
 
