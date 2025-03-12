@@ -15,7 +15,7 @@ async function loadPolls() {
     try {
         const data = await fs.readFile(POLLS_FILE, 'utf8');
         pollData = JSON.parse(data);
-        console.log('Polls loaded from file');
+        console.log('📊 Polls loaded successfully');
 
         // Check if there's an active poll and validate its state
         if (pollData.activePoll) {
@@ -24,20 +24,20 @@ async function loadPolls() {
             
             // If the poll has expired, move it to history
             if (endTime && now >= endTime) {
-                console.log('Found expired poll, moving to history');
+                console.log('📊 Moving expired poll to history');
                 pollData.activePoll.isActive = false;
                 pollData.pollHistory.push(pollData.activePoll);
                 pollData.activePoll = null;
             } else if (endTime) {
                 // Poll is still active, set up the remaining timer
-                console.log('Found active poll, setting up remaining timer');
+                console.log('📊 Restoring active poll timer');
                 pollData.activePoll.isActive = true;
                 const remainingTime = endTime - now;
                 
                 if (remainingTime > 0) {
                     setTimeout(async () => {
                         if (pollData.activePoll) {
-                            console.log('Auto-ending restored poll:', pollData.activePoll.id);
+                            console.log('📊 Auto-ending poll');
                             await endPoll();
                         }
                     }, remainingTime);
@@ -50,7 +50,7 @@ async function loadPolls() {
         if (error.code === 'ENOENT') {
             // File doesn't exist, create it
             await savePolls();
-            console.log('Created new polls file');
+            console.log('📊 Initialized new polls file');
         } else {
             console.error('Error loading polls:', error);
         }
@@ -61,7 +61,6 @@ async function loadPolls() {
 async function savePolls() {
     try {
         await fs.writeFile(POLLS_FILE, JSON.stringify(pollData, null, 4));
-        console.log('Polls saved to file');
     } catch (error) {
         console.error('Error saving polls:', error);
     }
@@ -91,10 +90,10 @@ async function createPoll(poll) {
 
     // Set up auto-end timer
     if (poll.duration > 0) {
-        console.log(`Setting poll to end in ${poll.duration} seconds (at ${new Date(pollData.activePoll.endTime).toISOString()})`);
+        console.log(`📊 New poll created, duration: ${poll.duration}s`);
         setTimeout(async () => {
             if (pollData.activePoll && pollData.activePoll.id === poll.id) {
-                console.log('Auto-ending poll:', poll.id);
+                console.log('📊 Poll ended automatically');
                 const endedPoll = await endPoll();
                 // Broadcast poll end to all clients
                 if (global.broadcast) {
@@ -114,7 +113,7 @@ async function createPoll(poll) {
 async function endPoll() {
     if (!pollData.activePoll) return null;
 
-    console.log('Ending poll:', pollData.activePoll.id);
+    console.log('📊 Ending current poll');
     const endedPoll = {
         ...pollData.activePoll,
         endTime: Date.now(),
@@ -141,22 +140,17 @@ async function endPoll() {
 
 // Submit a vote
 async function submitVote(pollId, optionIndex, username) {
-    console.log('Attempting to submit vote:', { pollId, optionIndex, username, activePoll: pollData.activePoll?.id });
-    
     if (!pollData.activePoll || pollData.activePoll.id !== pollId || !pollData.activePoll.isActive) {
-        console.log('Vote rejected - poll not active or ID mismatch');
         return null;
     }
 
     // Check if user has already voted
     if (votedUsers.has(username)) {
-        console.log('Vote rejected - user already voted:', username);
         return null;
     }
 
     // Validate option index
     if (optionIndex < 0 || optionIndex >= pollData.activePoll.options.length) {
-        console.log('Vote rejected - invalid option index');
         return null;
     }
 
@@ -164,7 +158,7 @@ async function submitVote(pollId, optionIndex, username) {
     pollData.activePoll.options[optionIndex].votes++;
     pollData.activePoll.totalVotes++;
     votedUsers.add(username);
-    console.log('Vote recorded successfully:', { poll: pollData.activePoll, username });
+    console.log(`📊 Vote recorded for poll option ${optionIndex + 1}`);
 
     // Save to file
     await savePolls();
