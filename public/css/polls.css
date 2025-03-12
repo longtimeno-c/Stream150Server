@@ -117,6 +117,13 @@
 
 .poll-option.voted {
     cursor: default;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.poll-option.voted .poll-option-stats {
+    opacity: 1;
+    transition: all 0.3s ease;
 }
 
 .poll-option-text {
@@ -132,7 +139,7 @@
     font-size: 0.9em;
     opacity: 0.8;
     margin-left: 10px;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .poll-option-bar {
@@ -141,7 +148,7 @@
     left: 0;
     height: 100%;
     background: rgba(0, 123, 255, 0.3);
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1;
 }
 
@@ -210,6 +217,7 @@
 @keyframes voteConfirm {
     0% {
         transform: scale(1);
+        background: rgba(255, 255, 255, 0.1);
     }
     50% {
         transform: scale(1.02);
@@ -217,6 +225,7 @@
     }
     100% {
         transform: scale(1);
+        background: rgba(255, 255, 255, 0.1);
     }
 }
 

@@ -202,6 +202,10 @@ body {
     padding: 4px 10px;
     border-radius: 12px;
     font-size: 0.85rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .controls {
