@@ -325,7 +325,7 @@ const PollManager = {
                 </div>
                 <div class="poll-footer">
                     <span class="poll-total-votes">Total votes: ${totalVotes}</span>
-                    ${!this.hasVoted ? '<div class="poll-instruction">Click an option to vote!</div>' : ''}
+                    ${!this.hasVoted ? '' : ''}
                 </div>
             </div>
         `;
