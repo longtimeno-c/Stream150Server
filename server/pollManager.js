@@ -132,6 +132,30 @@ async function endPoll() {
         pollData.pollHistory = pollData.pollHistory.slice(-10);
     }
 
+    // Create poll results message
+    const totalVotes = endedPoll.totalVotes;
+    const sortedOptions = [...endedPoll.options].sort((a, b) => b.votes - a.votes);
+    const winningOption = sortedOptions[0];
+    
+    // Create detailed results string
+    const resultsDetails = sortedOptions.map(option => {
+        const percentage = totalVotes > 0 ? (option.votes / totalVotes * 100).toFixed(1) : 0;
+        return `${option.text}: ${percentage}% (${option.votes} votes)`;
+    }).join(' | ');
+    
+    const resultsMessage = {
+        type: 'CHAT_MESSAGE',
+        platform: 'web',
+        username: 'System',
+        message: `📊 Poll ended: "${endedPoll.question}"\n📈 Results: ${resultsDetails}\n🏆 Winner: "${winningOption.text}" with ${winningOption.votes} votes!`,
+        timestamp: new Date().toISOString()
+    };
+
+    // Broadcast the results message
+    if (global.broadcast) {
+        global.broadcast(resultsMessage);
+    }
+
     // Save to file
     await savePolls();
 
