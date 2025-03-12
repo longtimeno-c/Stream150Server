@@ -5,7 +5,8 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
-const EventEmitter = require('events')
+const EventEmitter = require('events');
+const PollManager = require('./server/pollManager');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -305,11 +306,24 @@ wss.on('connection', (ws) => {
     viewerCount++;
     
     // Send initial stream status and viewer count
+    console.log('Sending initial stream status:', { isStreaming, viewerCount });
     ws.send(JSON.stringify({ 
         type: 'STREAM_STATUS', 
         status: isStreaming ? 'LIVE' : 'OFFLINE',
         viewers: viewerCount 
     }));
+
+    // Send current poll if exists
+    const currentPoll = PollManager.getCurrentPoll();
+    if (currentPoll) {
+        console.log('Sending current poll to new client:', currentPoll);
+        ws.send(JSON.stringify({
+            type: 'POLL_UPDATE',
+            poll: currentPoll
+        }));
+    } else {
+        console.log('No active poll to send to new client');
+    }
     
     // Send initial highlights
     ws.send(JSON.stringify({
@@ -358,107 +372,171 @@ wss.on('connection', (ws) => {
     });
     
     // Handle incoming messages
-    ws.on('message', (message) => {
+    ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
+            console.log('Received WebSocket message:', data);
             
-            if (data.type === 'CHAT_MESSAGE') {
-                // Format the chat message
-                const chatMessage = {
-                    type: 'CHAT_MESSAGE',
-                    platform: data.platform || 'web',
-                    username: data.username || 'Anonymous',
-                    message: data.message,
-                    timestamp: new Date().toISOString(),
-                    id: Date.now().toString()
-                };
-                
-                // Add to chat history
-                chatHistory.push(chatMessage);
-                console.log(`Added message to chat history. Total: ${chatHistory.length}`);
-                
-                // Maintain maximum history size
-                if (chatHistory.length > MAX_CHAT_HISTORY) {
-                    chatHistory.shift();
-                }
-                
-                // Save chat history periodically (every 10 messages)
-                if (chatHistory.length % 10 === 0) {
-                    saveChatHistory();
-                }
-                
-                // Broadcast to all clients
-                broadcast(chatMessage);
-            } else if (data.type === 'REQUEST_CHAT_HISTORY') {
-                console.log('Client requested chat history');
-                
-                // Ensure all chat messages have the proper format before sending
-                const recentMessages = chatHistory.slice(-50).map(msg => {
-                    // If it's a string, convert it to a proper message object
-                    if (typeof msg === 'string') {
-                        return {
-                            type: 'CHAT_MESSAGE',
-                            platform: 'web',
-                            username: 'Anonymous',
-                            message: msg,
-                            timestamp: new Date().toISOString(),
-                            id: Date.now().toString()
-                        };
-                    }
-                    // If it's already an object but missing fields, add defaults
-                    if (typeof msg === 'object') {
-                        return {
-                            type: msg.type || 'CHAT_MESSAGE',
-                            platform: msg.platform || 'web',
-                            username: msg.username || 'Anonymous',
-                            message: msg.message || '',
-                            timestamp: msg.timestamp || new Date().toISOString(),
-                            id: msg.id || Date.now().toString()
-                        };
-                    }
-                    return msg;
-                });
-                
-                ws.send(JSON.stringify({
-                    type: 'CHAT_HISTORY',
-                    messages: recentMessages
-                }));
-            } else if (data.type === 'ADD_HIGHLIGHT') {
-                if (data.highlight && data.isAdmin) {
-                    // Generate a server-side ID if not provided
-                    if (!data.highlight.id) {
-                        data.highlight.id = 'highlight-' + Date.now();
-                    }
-                    
-                    // Add server timestamp
-                    data.highlight.serverTimestamp = new Date().toISOString();
-                    
-                    // Add the highlight
-                    addHighlight(data.highlight);
-                    
-                    // Confirm to the sender
+            switch(data.type) {
+                case 'REQUEST_STREAM_STATUS':
+                    console.log('Sending stream status on request:', { isStreaming, viewerCount });
                     ws.send(JSON.stringify({
-                        type: 'HIGHLIGHT_ADDED',
-                        highlight: data.highlight
+                        type: 'STREAM_STATUS',
+                        status: isStreaming ? 'LIVE' : 'OFFLINE',
+                        viewers: viewerCount
                     }));
-                }
-            } else if (data.type === 'REMOVE_HIGHLIGHT') {
-                if (data.id && data.isAdmin) {
-                    const removed = removeHighlight(data.id);
+                    break;
+
+                case 'CHAT_MESSAGE':
+                    // Format the chat message
+                    const chatMessage = {
+                        type: 'CHAT_MESSAGE',
+                        platform: data.platform || 'web',
+                        username: data.username || 'Anonymous',
+                        message: data.message,
+                        timestamp: new Date().toISOString(),
+                        id: Date.now().toString()
+                    };
                     
-                    // Confirm to the sender
+                    // Add to chat history
+                    chatHistory.push(chatMessage);
+                    console.log(`Added message to chat history. Total: ${chatHistory.length}`);
+                    
+                    // Maintain maximum history size
+                    if (chatHistory.length > MAX_CHAT_HISTORY) {
+                        chatHistory.shift();
+                    }
+                    
+                    // Save chat history periodically (every 10 messages)
+                    if (chatHistory.length % 10 === 0) {
+                        saveChatHistory();
+                    }
+                    
+                    // Broadcast to all clients
+                    broadcast(chatMessage);
+                    break;
+
+                case 'REQUEST_CHAT_HISTORY':
+                    console.log('Client requested chat history');
+                    
+                    // Ensure all chat messages have the proper format before sending
+                    const recentMessages = chatHistory.slice(-50).map(msg => {
+                        // If it's a string, convert it to a proper message object
+                        if (typeof msg === 'string') {
+                            return {
+                                type: 'CHAT_MESSAGE',
+                                platform: 'web',
+                                username: 'Anonymous',
+                                message: msg,
+                                timestamp: new Date().toISOString(),
+                                id: Date.now().toString()
+                            };
+                        }
+                        // If it's already an object but missing fields, add defaults
+                        if (typeof msg === 'object') {
+                            return {
+                                type: msg.type || 'CHAT_MESSAGE',
+                                platform: msg.platform || 'web',
+                                username: msg.username || 'Anonymous',
+                                message: msg.message || '',
+                                timestamp: msg.timestamp || new Date().toISOString(),
+                                id: msg.id || Date.now().toString()
+                            };
+                        }
+                        return msg;
+                    });
+                    
                     ws.send(JSON.stringify({
-                        type: 'HIGHLIGHT_REMOVED',
-                        id: data.id,
-                        success: removed
+                        type: 'CHAT_HISTORY',
+                        messages: recentMessages
                     }));
-                }
-            } else if (data.type === 'REQUEST_HIGHLIGHTS') {
-                // Send highlights to the requesting client
-                ws.send(JSON.stringify({
-                    type: 'HIGHLIGHTS_UPDATE',
-                    highlights: highlights
-                }));
+                    break;
+
+                case 'ADD_HIGHLIGHT':
+                    if (data.highlight && data.isAdmin) {
+                        // Generate a server-side ID if not provided
+                        if (!data.highlight.id) {
+                            data.highlight.id = 'highlight-' + Date.now();
+                        }
+                        
+                        // Add server timestamp
+                        data.highlight.serverTimestamp = new Date().toISOString();
+                        
+                        // Add the highlight
+                        addHighlight(data.highlight);
+                        
+                        // Confirm to the sender
+                        ws.send(JSON.stringify({
+                            type: 'HIGHLIGHT_ADDED',
+                            highlight: data.highlight
+                        }));
+                    }
+                    break;
+
+                case 'REMOVE_HIGHLIGHT':
+                    if (data.id && data.isAdmin) {
+                        const removed = removeHighlight(data.id);
+                        
+                        // Confirm to the sender
+                        ws.send(JSON.stringify({
+                            type: 'HIGHLIGHT_REMOVED',
+                            id: data.id,
+                            success: removed
+                        }));
+                    }
+                    break;
+
+                case 'REQUEST_HIGHLIGHTS':
+                    // Send highlights to the requesting client
+                    ws.send(JSON.stringify({
+                        type: 'HIGHLIGHTS_UPDATE',
+                        highlights: highlights
+                    }));
+                    break;
+
+                case 'CREATE_POLL':
+                    console.log('Creating new poll:', data.poll);
+                    if (data.poll) {
+                        const newPoll = await PollManager.createPoll(data.poll);
+                        // Broadcast the new poll to all clients
+                        broadcast({
+                            type: 'POLL_UPDATE',
+                            poll: newPoll
+                        });
+                    }
+                    break;
+
+                case 'SUBMIT_VOTE':
+                    console.log('Processing vote:', data);
+                    if (data.pollId && typeof data.optionIndex === 'number' && data.username) {
+                        const updatedPoll = await PollManager.submitVote(data.pollId, data.optionIndex, data.username);
+                        if (updatedPoll) {
+                            broadcast({
+                                type: 'POLL_UPDATE',
+                                poll: updatedPoll
+                            });
+                        }
+                    }
+                    break;
+
+                case 'REQUEST_POLL_STATE':
+                    const currentPoll = PollManager.getCurrentPoll();
+                    ws.send(JSON.stringify({
+                        type: 'POLL_UPDATE',
+                        poll: currentPoll
+                    }));
+                    break;
+
+                case 'REQUEST_RECENT_POLL':
+                    const recentPoll = PollManager.getMostRecentPoll();
+                    if (recentPoll) {
+                        ws.send(JSON.stringify({
+                            type: 'POLL_UPDATE',
+                            poll: recentPoll,
+                            isActive: false
+                        }));
+                    }
+                    break;
             }
         } catch (err) {
             console.error('Error processing message:', err);
@@ -478,14 +556,18 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Function to broadcast messages to all connected clients
+// Helper function to broadcast to all connected clients
 function broadcast(message) {
-    wss.clients.forEach((client) => {
+    console.log('Broadcasting message:', message);
+    wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(message));
         }
     });
 }
+
+// Make broadcast function globally available for other modules
+global.broadcast = broadcast;
 
 // Save chat history more frequently (every minute)
 setInterval(saveChatHistory, 60 * 1000);
@@ -642,6 +724,9 @@ fs.access(hlsDir, fs.constants.F_OK, (err) => {
         console.log('✅ HLS directory exists:', hlsDir);
     }
 });
+
+// Initialize PollManager when server starts
+PollManager.loadPolls();
 
 server.listen(3001, () => {
     const isProduction = process.env.NODE_ENV === 'production';
