@@ -253,7 +253,6 @@ const PollManager = {
 
     createPollHTML() {
         const { question, options, totalVotes } = this.currentPoll;
-        const maxVotes = Math.max(...options.map(opt => opt.votes));
 
         return `
             <div class="poll-content">
@@ -261,7 +260,6 @@ const PollManager = {
                 <div class="poll-options">
                     ${options.map((option, index) => {
                         const percentage = totalVotes > 0 ? (option.votes / totalVotes * 100).toFixed(1) : 0;
-                        const relativeWidth = maxVotes > 0 ? (option.votes / maxVotes * 100) : 0;
                         
                         return `
                             <div class="poll-option ${this.hasVoted ? 'voted' : ''}" data-index="${index}">
@@ -271,7 +269,7 @@ const PollManager = {
                                         ${this.hasVoted ? `(${option.votes} votes)` : ''}
                                     </span>
                                 </div>
-                                <div class="poll-option-bar" style="width: ${relativeWidth}%"></div>
+                                <div class="poll-option-bar" style="width: ${percentage}%"></div>
                                 <div class="poll-option-percentage">${percentage}%</div>
                             </div>
                         `;
@@ -279,7 +277,7 @@ const PollManager = {
                 </div>
                 <div class="poll-footer">
                     <span class="poll-total-votes">Total votes: ${totalVotes}</span>
-                    ${!this.hasVoted ? '' : ''}
+                    ${!this.hasVoted ? '<div class="poll-instruction">Click an option to vote!</div>' : ''}
                 </div>
             </div>
         `;
