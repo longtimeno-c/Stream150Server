@@ -200,18 +200,57 @@ const PollManager = {
 
     handlePollUpdate(poll) {
         console.log('Updating poll:', poll);
-        // Reset hasVoted flag and votedUsers when receiving a new poll
+        
+        // If it's a new poll, do a full render
         if (!this.currentPoll || this.currentPoll.id !== poll.id) {
             this.hasVoted = false;
             this.votedUsers.clear();
+            this.currentPoll = poll;
+            this.renderPoll();
+            return;
         }
+
+        // Otherwise, just update the numbers
         this.currentPoll = poll;
-        // Check if current user has voted
-        const username = UserManager.getUsername();
-        if (this.votedUsers.has(username)) {
-            this.hasVoted = true;
-        }
-        this.renderPoll();
+        
+        // Update vote counts and percentages smoothly
+        poll.options.forEach((option, index) => {
+            const percentage = poll.totalVotes > 0 ? (option.votes / poll.totalVotes * 100).toFixed(1) : 0;
+            
+            // Update both desktop and mobile containers
+            ['.poll-container', '.mobile-poll-container'].forEach(containerSelector => {
+                const container = document.querySelector(containerSelector);
+                if (!container) return;
+
+                const optionElement = container.querySelector(`[data-index="${index}"]`);
+                if (!optionElement) return;
+
+                // Update the bar width smoothly
+                const bar = optionElement.querySelector('.poll-option-bar');
+                if (bar) {
+                    bar.style.width = `${percentage}%`;
+                }
+
+                // Update the percentage text
+                const percentageElement = optionElement.querySelector('.poll-option-percentage');
+                if (percentageElement) {
+                    percentageElement.textContent = `${percentage}%`;
+                }
+
+                // Update vote count if visible
+                const statsElement = optionElement.querySelector('.poll-option-stats');
+                if (statsElement) {
+                    statsElement.textContent = `(${option.votes} votes)`;
+                }
+            });
+        });
+
+        // Update total votes
+        document.querySelectorAll('.poll-total-votes').forEach(element => {
+            if (element) {
+                element.textContent = `Total votes: ${poll.totalVotes}`;
+            }
+        });
     },
 
     handlePollEnd() {
@@ -306,6 +345,10 @@ const PollManager = {
 
         console.log('Submitting vote for option:', optionIndex);
 
+        // Mark as voted before the server response to prevent double votes
+        this.hasVoted = true;
+        this.votedUsers.add(username);
+
         // Add the just-voted class to the clicked option
         const votedOption = document.querySelector(`[data-index="${optionIndex}"]`);
         if (votedOption) {
@@ -323,9 +366,19 @@ const PollManager = {
             username: username
         }));
 
-        this.hasVoted = true;
-        this.votedUsers.add(username);
-        this.renderPoll();
+        // Update UI to show voted state without full re-render
+        document.querySelectorAll('.poll-option').forEach(option => {
+            option.classList.add('voted');
+            option.style.cursor = 'default';
+            // Remove click handlers
+            option.replaceWith(option.cloneNode(true));
+        });
+
+        // Hide the instruction text
+        const instruction = document.querySelector('.poll-instruction');
+        if (instruction) {
+            instruction.style.display = 'none';
+        }
     },
 
     hidePoll() {
