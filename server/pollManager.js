@@ -163,7 +163,14 @@ async function submitVote(pollId, optionIndex, username) {
     // Save to file
     await savePolls();
 
-    return pollData.activePoll;
+    // Return a vote update instead of the full poll
+    return {
+        type: 'vote_update',
+        pollId: pollId,
+        optionIndex: optionIndex,
+        newVotes: pollData.activePoll.options[optionIndex].votes,
+        totalVotes: pollData.activePoll.totalVotes
+    };
 }
 
 // Get current poll state

@@ -486,12 +486,14 @@ wss.on('connection', (ws) => {
             } else if (data.type === 'SUBMIT_VOTE') {
                 console.log('Processing vote:', data);
                 if (data.pollId && typeof data.optionIndex === 'number' && data.username) {
-                    const updatedPoll = await PollManager.submitVote(data.pollId, data.optionIndex, data.username);
-                    if (updatedPoll) {
-                        broadcast({
-                            type: 'POLL_UPDATE',
-                            poll: updatedPoll
-                        });
+                    const voteUpdate = await PollManager.submitVote(data.pollId, data.optionIndex, data.username);
+                    if (voteUpdate) {
+                        if (voteUpdate.type === 'vote_update') {
+                            broadcast({
+                                type: 'VOTE_UPDATE',
+                                ...voteUpdate
+                            });
+                        }
                     }
                 }
             } else if (data.type === 'REQUEST_POLL_STATE') {

@@ -39,6 +39,9 @@ const PollManager = {
             } else if (data.type === 'POLL_END') {
                 console.log('Handling poll end');
                 this.handlePollEnd();
+            } else if (data.type === 'VOTE_UPDATE') {
+                console.log('Handling vote update:', data);
+                this.handleVoteUpdate(data);
             }
         });
     },
@@ -211,6 +214,52 @@ const PollManager = {
         this.hasVoted = false;
         this.votedUsers.clear();
         this.hidePoll();
+    },
+
+    handleVoteUpdate(data) {
+        if (!this.currentPoll || this.currentPoll.id !== data.pollId) return;
+
+        // Update the vote counts and total votes
+        this.currentPoll.options[data.optionIndex].votes = data.newVotes;
+        this.currentPoll.totalVotes = data.totalVotes;
+
+        // Update the UI without re-rendering the whole poll
+        const pollContainers = [
+            document.querySelector('.poll-container'),
+            document.querySelector('.mobile-poll-container')
+        ];
+
+        pollContainers.forEach(container => {
+            if (!container) return;
+
+            // Update all option bars and percentages
+            this.currentPoll.options.forEach((option, index) => {
+                const percentage = this.currentPoll.totalVotes > 0 
+                    ? (option.votes / this.currentPoll.totalVotes * 100).toFixed(1) 
+                    : 0;
+
+                const optionElement = container.querySelector(`[data-index="${index}"]`);
+                if (optionElement) {
+                    // Update the bar width
+                    const bar = optionElement.querySelector('.poll-option-bar');
+                    if (bar) bar.style.width = `${percentage}%`;
+
+                    // Update the percentage text
+                    const percentageElement = optionElement.querySelector('.poll-option-percentage');
+                    if (percentageElement) percentageElement.textContent = `${percentage}%`;
+
+                    // Update vote count if shown
+                    const statsElement = optionElement.querySelector('.poll-option-stats');
+                    if (statsElement) statsElement.textContent = `(${option.votes} votes)`;
+                }
+            });
+
+            // Update total votes
+            const totalVotesElement = container.querySelector('.poll-total-votes');
+            if (totalVotesElement) {
+                totalVotesElement.textContent = `Total votes: ${this.currentPoll.totalVotes}`;
+            }
+        });
     },
 
     renderPoll() {
