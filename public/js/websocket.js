@@ -5,11 +5,9 @@ const maxReconnectAttempts = 5;
 const reconnectDelay = 3000;
 
 function initializeWebSocket() {
-    // Determine WebSocket URL based on current environment
-    const isProduction = window.location.hostname === 'watch.stream150.com';
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const host = window.location.host;
-    const wsUrl = isProduction ? `${wsProtocol}://${host}/ws` : `ws://localhost:3001`;
+    // WebSocket setup
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
     
     console.log('Connecting to WebSocket:', wsUrl);
     
@@ -17,9 +15,16 @@ function initializeWebSocket() {
     socket = new WebSocket(wsUrl);
     window.socket = socket; // Make it globally available
     
-    socket.onopen = function() {
+    socket.onopen = () => {
         console.log('WebSocket connection established');
+        // Dispatch connection event
+        document.dispatchEvent(new CustomEvent('websocket-connected'));
         reconnectAttempts = 0;
+        
+        // Request current poll state when connection is established
+        socket.send(JSON.stringify({
+            type: 'REQUEST_POLL_STATE'
+        }));
         
         // Update UI to show connected state
         document.querySelectorAll('.chat-status').forEach(el => {
@@ -28,53 +33,56 @@ function initializeWebSocket() {
         });
     };
     
-    socket.onmessage = function(event) {
+    socket.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
             console.log('Received WebSocket message:', data);
             
-            // Dispatch custom event for other modules to listen to
-            const wsEvent = new CustomEvent('ws-message', { detail: data });
-            document.dispatchEvent(wsEvent);
+            // Dispatch message event for all messages
+            document.dispatchEvent(new CustomEvent('websocket-message', {
+                detail: data
+            }));
             
-            // Handle specific message types directly
+            // Handle different message types
             switch(data.type) {
-                case 'VIEWER_COUNT':
-                    updateViewerCount(data.viewers);
+                case 'CHAT_MESSAGE':
+                    // Handle individual chat message
+                    if (typeof handleChatMessage === 'function') {
+                        handleChatMessage(data);
+                    }
                     break;
+                    
+                case 'CHAT_HISTORY':
+                    // Handle chat history
+                    if (typeof handleChatHistory === 'function') {
+                        handleChatHistory(data.messages);
+                    }
+                    break;
+                    
+                case 'POLL_UPDATE':
+                    console.log('Poll update received:', data.poll);
+                    break;
+                    
+                case 'POLL_END':
+                    console.log('Poll ended:', data);
+                    break;
+                    
+                case 'VIEWER_COUNT':
+                    if (typeof updateViewerCount === 'function') {
+                        updateViewerCount(data.viewers);
+                    }
+                    break;
+                    
                 case 'STREAM_STATUS':
                     console.log('Stream status update received:', data.status);
-                    // Check if the handleStreamStatusUpdate function is available
                     if (typeof window.handleStreamStatusUpdate === 'function') {
                         window.handleStreamStatusUpdate(data.status);
                     } else if (typeof window.updateStreamStatus === 'function') {
-                        // Fallback to updateStreamStatus if handleStreamStatusUpdate is not available
-                        window.updateStreamStatus(data.status);
-                    } else {
-                        console.error('Stream status update functions not available');
-                        // Direct DOM manipulation as a last resort
-                        const statusElement = document.getElementById('status');
-                        const statusTextElement = document.getElementById('statusText');
-                        
-                        if (statusElement && statusTextElement) {
-                            if (data.status === 'LIVE') {
-                                statusElement.classList.remove('offline');
-                                statusElement.classList.add('online');
-                                statusTextElement.textContent = 'LIVE';
-                            } else {
-                                statusElement.classList.remove('online');
-                                statusElement.classList.add('offline');
-                                statusTextElement.textContent = data.status || 'OFFLINE';
-                            }
-                        }
+                        window.updateStreamStatus(data.status === 'LIVE');
                     }
-                    break;
-                case 'POLL_UPDATE':
-                case 'POLL_END':
-                    console.log('Poll message received:', data);
-                    // Dispatch poll event for poll manager to handle
-                    const pollEvent = new CustomEvent('poll-update', { detail: data });
-                    document.dispatchEvent(pollEvent);
+                    if (typeof updateViewerCount === 'function' && data.viewers !== undefined) {
+                        updateViewerCount(data.viewers);
+                    }
                     break;
             }
         } catch (error) {
@@ -82,7 +90,7 @@ function initializeWebSocket() {
         }
     };
     
-    socket.onerror = function(error) {
+    socket.onerror = (error) => {
         console.error('WebSocket error:', error);
         
         // Update UI to show error state
@@ -92,7 +100,7 @@ function initializeWebSocket() {
         });
     };
     
-    socket.onclose = function() {
+    socket.onclose = () => {
         console.log('WebSocket connection closed');
         
         // Update UI to show disconnected state
