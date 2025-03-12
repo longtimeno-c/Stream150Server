@@ -140,24 +140,37 @@ async function endPoll() {
     // Format vote counts with proper pluralization
     const formatVotes = (votes) => `${votes} ${votes === 1 ? 'vote' : 'votes'}`;
     
-    // Create detailed results string with better formatting
+    // Create winner announcement
+    const winnerMessage = {
+        type: 'CHAT_MESSAGE',
+        platform: 'web',
+        username: 'Poll System',
+        message: `📊 Poll ended: "${endedPoll.question}" 🏆 Winner: ${winningOption.text}!`,
+        timestamp: new Date().toISOString()
+    };
+
+    // Create detailed results string
     const resultsDetails = sortedOptions.map((option, index) => {
         const percentage = totalVotes > 0 ? (option.votes / totalVotes * 100).toFixed(1) : 0;
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '  ';
-        return `${medal} ${option.text}: ${percentage}% (${formatVotes(option.votes)})`;
-    }).join('\n');
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '•';
+        return `${medal} ${option.text} (${percentage}%, ${formatVotes(option.votes)})`;
+    }).join(' ║ ');
     
     const resultsMessage = {
         type: 'CHAT_MESSAGE',
         platform: 'web',
         username: 'Poll System',
-        message: `📊 Poll Results: "${endedPoll.question}"\n\n${resultsDetails}\n\n📈 Total Votes: ${formatVotes(totalVotes)}`,
+        message: `📈 Results: ${resultsDetails} | Total: ${formatVotes(totalVotes)}`,
         timestamp: new Date().toISOString()
     };
 
-    // Broadcast the results message
+    // Broadcast both messages
     if (global.broadcast) {
-        global.broadcast(resultsMessage);
+        global.broadcast(winnerMessage);
+        // Small delay between messages for better readability
+        setTimeout(() => {
+            global.broadcast(resultsMessage);
+        }, 500);
     }
 
     // Save to file
