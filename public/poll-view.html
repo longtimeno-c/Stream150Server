@@ -96,8 +96,6 @@
                 return;
             }
 
-            const maxVotes = Math.max(...poll.options.map(opt => opt.votes));
-            
             pollContainer.innerHTML = `
                 <div class="poll-status">${isActive ? 'Active Poll' : 'Most Recent Poll'}</div>
                 <div class="poll-content ${!isActive ? 'poll-ended' : ''}">
@@ -105,12 +103,11 @@
                     <div class="poll-options">
                         ${poll.options.map((option, index) => {
                             const percentage = poll.totalVotes > 0 ? (option.votes / poll.totalVotes * 100).toFixed(1) : 0;
-                            const relativeWidth = maxVotes > 0 ? (option.votes / maxVotes * 100) : 0;
                             
                             return `
                                 <div class="poll-option voted">
                                     <div class="poll-option-text">${option.text}</div>
-                                    <div class="poll-option-bar" style="width: ${relativeWidth}%"></div>
+                                    <div class="poll-option-bar" style="width: ${percentage}%"></div>
                                     <div class="poll-option-percentage">${percentage}% (${option.votes})</div>
                                 </div>
                             `;
