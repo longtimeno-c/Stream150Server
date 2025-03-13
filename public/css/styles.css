@@ -221,6 +221,7 @@ body {
     bottom: 10px;
     right: 10px;
     z-index: 3;
+    justify-content: flex-end;
 }
 
 .fullscreen-btn {
@@ -246,6 +247,40 @@ body {
 .fullscreen-btn svg {
     width: 20px;
     height: 20px;
+}
+
+/* Volume button styles */
+.volume-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    color: white;
+}
+
+.volume-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
+}
+
+.volume-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.volume-btn.muted .volume-on {
+    display: none;
+}
+
+.volume-btn.muted .volume-off {
+    display: block !important;
 }
 
 .donation-buttons {
@@ -905,16 +940,29 @@ body {
     
     /* Reposition controls for mobile */
     .controls {
-        position: static;
-        padding: 10px;
+        width: 100%;
         justify-content: center;
+        padding: 10px 5px;
+        gap: 8px;
+        position: static;
         background: rgba(0, 0, 0, 0.5);
         border-radius: 0 0 8px 8px;
     }
     
-    /* Hide fullscreen button on mobile */
+    /* Make buttons slightly smaller on mobile */
+    .fullscreen-btn, .volume-btn, .live-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .fullscreen-btn svg, .volume-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    /* Show all buttons on mobile */
     .fullscreen-btn {
-        display: none;
+        display: flex !important;
     }
     
     /* Reposition quality selector for mobile */
@@ -928,6 +976,62 @@ body {
 @media (min-width: 769px) {
     .fullscreen-btn {
         display: flex;
+    }
+}
+
+/* iPad/Tablet specific styles */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .controls {
+        padding: 12px;
+        gap: 12px;
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    /* Slightly larger buttons for better touch targets on iPad */
+    .fullscreen-btn, .volume-btn {
+        width: 44px;
+        height: 44px;
+    }
+    
+    .fullscreen-btn svg, .volume-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+    
+    /* Make the live button more prominent and consistent with other controls */
+    .live-btn {
+        height: 44px;
+        padding: 0 14px;
+        font-size: 0.9rem;
+        border-radius: 22px;
+        background: rgba(255, 0, 0, 0.7);
+    }
+    
+    .live-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+    
+    .live-btn.inactive {
+        background: rgba(128, 128, 128, 0.7);
+    }
+    
+    /* Larger quality selector for easier touch */
+    .quality-select {
+        height: 44px;
+        padding: 6px 28px 6px 12px;
+        font-size: 0.9rem;
+        background-position: right 10px center;
+        background-size: 10px auto;
+    }
+    
+    /* Ensure controls are properly spaced in landscape mode */
+    @media (orientation: landscape) {
+        .controls {
+            bottom: 10px;
+            right: 10px;
+        }
     }
 }
 
