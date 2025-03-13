@@ -57,6 +57,8 @@
                     <source src="" type="application/x-mpegURL">
                     Your browser does not support the video element.
                 </video>
+                <!-- Video Overlay Countdown -->
+                <div id="videoOverlayCountdown" class="video-overlay-countdown"></div>
                 <div class="status-bar">
                     <div id="status" class="status-indicator offline">
                         <span class="status-dot"></span>
@@ -75,9 +77,16 @@
                         </svg>
                         <span>LIVE</span>
                     </button>
-                    <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Full Screen">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                    <button class="volume-btn" onclick="toggleMute()" title="Toggle Mute">
+                        <svg class="volume-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                        </svg>
+                        <svg class="volume-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <line x1="23" y1="9" x2="17" y2="15"></line>
+                            <line x1="17" y1="9" x2="23" y2="15"></line>
                         </svg>
                     </button>
                     <select id="qualitySelect" class="quality-select" title="Video Quality">
@@ -86,6 +95,11 @@
                         <option value="1">720p HD</option>
                         <option value="2">480p</option>
                     </select>
+                    <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Full Screen">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
@@ -314,6 +328,20 @@
             video.muted = true;
             video.autoplay = true;
             
+            // Check if stream is offline and show countdown overlay
+            const statusElement = document.getElementById('status');
+            const videoOverlayCountdown = document.getElementById('videoOverlayCountdown');
+            
+            if (statusElement && videoOverlayCountdown && statusElement.classList.contains('offline')) {
+                videoOverlayCountdown.classList.add('active');
+            }
+            
+            // Initialize volume button state
+            updateVolumeButtonState();
+            
+            // Add event listener for volume changes
+            video.addEventListener('volumechange', updateVolumeButtonState);
+            
             if (Hls.isSupported()) {
                 console.log('✅ HLS.js is supported');
                 hls = new Hls({
@@ -483,6 +511,7 @@
                 document.querySelector('.unmute-button').addEventListener('click', function() {
                     const video = document.getElementById('videoPlayer');
                     video.muted = false;
+                    updateVolumeButtonState(); // Update volume button state
                     prompt.remove();
                 });
                 
@@ -513,6 +542,7 @@
                 document.querySelector('.unmute-button').addEventListener('click', function() {
                     const video = document.getElementById('videoPlayer');
                     video.muted = true; // Keep muted to ensure it can play
+                    updateVolumeButtonState(); // Update volume button state
                     video.play()
                         .then(() => {
                             // Show unmute option after successful play
@@ -523,6 +553,7 @@
                             
                             document.querySelector('.unmute-button').addEventListener('click', function() {
                                 video.muted = false;
+                                updateVolumeButtonState(); // Update volume button state
                                 prompt.remove();
                             });
                         })
@@ -631,6 +662,34 @@
                 player.classList.add('fullscreen');
             }
         }
+
+        // Function to toggle mute
+        function toggleMute() {
+            const video = document.getElementById('videoPlayer');
+            const volumeBtn = document.querySelector('.volume-btn');
+            
+            if (video) {
+                video.muted = !video.muted;
+                updateVolumeButtonState();
+            }
+        }
+        
+        // Function to update volume button state
+        function updateVolumeButtonState() {
+            const video = document.getElementById('videoPlayer');
+            const volumeBtn = document.querySelector('.volume-btn');
+            
+            if (video && volumeBtn) {
+                if (video.muted) {
+                    volumeBtn.classList.add('muted');
+                } else {
+                    volumeBtn.classList.remove('muted');
+                }
+            }
+        }
+        
+        // Make toggleMute function globally available
+        window.toggleMute = toggleMute;
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/flv.js/1.6.2/flv.min.js"></script>

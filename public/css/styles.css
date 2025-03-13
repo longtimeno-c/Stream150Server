@@ -221,6 +221,7 @@ body {
     bottom: 10px;
     right: 10px;
     z-index: 3;
+    justify-content: flex-end;
 }
 
 .fullscreen-btn {
@@ -246,6 +247,40 @@ body {
 .fullscreen-btn svg {
     width: 20px;
     height: 20px;
+}
+
+/* Volume button styles */
+.volume-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    color: white;
+}
+
+.volume-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
+}
+
+.volume-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.volume-btn.muted .volume-on {
+    display: none;
+}
+
+.volume-btn.muted .volume-off {
+    display: block !important;
 }
 
 .donation-buttons {
@@ -905,16 +940,29 @@ body {
     
     /* Reposition controls for mobile */
     .controls {
-        position: static;
-        padding: 10px;
+        width: 100%;
         justify-content: center;
+        padding: 10px 5px;
+        gap: 8px;
+        position: static;
         background: rgba(0, 0, 0, 0.5);
         border-radius: 0 0 8px 8px;
     }
     
-    /* Hide fullscreen button on mobile */
+    /* Make buttons slightly smaller on mobile */
+    .fullscreen-btn, .volume-btn, .live-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .fullscreen-btn svg, .volume-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    /* Show all buttons on mobile */
     .fullscreen-btn {
-        display: none;
+        display: flex !important;
     }
     
     /* Reposition quality selector for mobile */
@@ -928,6 +976,62 @@ body {
 @media (min-width: 769px) {
     .fullscreen-btn {
         display: flex;
+    }
+}
+
+/* iPad/Tablet specific styles */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .controls {
+        padding: 12px;
+        gap: 12px;
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    /* Slightly larger buttons for better touch targets on iPad */
+    .fullscreen-btn, .volume-btn {
+        width: 44px;
+        height: 44px;
+    }
+    
+    .fullscreen-btn svg, .volume-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+    
+    /* Make the live button more prominent and consistent with other controls */
+    .live-btn {
+        height: 44px;
+        padding: 0 14px;
+        font-size: 0.9rem;
+        border-radius: 22px;
+        background: rgba(255, 0, 0, 0.7);
+    }
+    
+    .live-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+    
+    .live-btn.inactive {
+        background: rgba(128, 128, 128, 0.7);
+    }
+    
+    /* Larger quality selector for easier touch */
+    .quality-select {
+        height: 44px;
+        padding: 6px 28px 6px 12px;
+        font-size: 0.9rem;
+        background-position: right 10px center;
+        background-size: 10px auto;
+    }
+    
+    /* Ensure controls are properly spaced in landscape mode */
+    @media (orientation: landscape) {
+        .controls {
+            bottom: 10px;
+            right: 10px;
+        }
     }
 }
 
@@ -2272,4 +2376,83 @@ body {
     flex-direction: column;
     min-height: 100vh;
     position: relative;
+}
+
+/* Video Overlay Countdown Styles */
+.video-overlay-countdown {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.video-overlay-countdown.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.video-overlay-countdown .countdown-label {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.video-overlay-countdown .countdown-time {
+    font-size: 1.8rem;
+    gap: 10px;
+}
+
+.video-overlay-countdown .countdown-value {
+    background: rgba(30, 144, 255, 0.2);
+    padding: 10px 15px;
+    border-radius: 8px;
+    min-width: 2.5em;
+    font-size: 2rem;
+}
+
+.video-overlay-countdown .countdown-unit-label {
+    font-size: 0.9rem;
+    color: #ccc;
+    margin-top: 8px;
+}
+
+.video-overlay-countdown .countdown-separator {
+    font-size: 2rem;
+    color: #999;
+}
+
+.video-overlay-countdown .countdown-status {
+    height: 5px;
+    background: linear-gradient(to right, #1E90FF, #64B5F6, #1E90FF);
+    box-shadow: 0 0 10px rgba(30, 144, 255, 0.5);
+}
+
+@media (max-width: 768px) {
+    .video-overlay-countdown .countdown-label {
+        font-size: 1.2rem;
+    }
+    
+    .video-overlay-countdown .countdown-time {
+        font-size: 1.4rem;
+    }
+    
+    .video-overlay-countdown .countdown-value {
+        padding: 8px 10px;
+        font-size: 1.6rem;
+    }
 }
