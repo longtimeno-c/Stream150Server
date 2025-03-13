@@ -185,6 +185,7 @@ function handleStreamStatusUpdate(data) {
     const streamStatusMobile = document.getElementById('streamStatusMobile');
     const statusElement = document.getElementById('status');
     const statusText = document.getElementById('statusText');
+    const videoOverlayCountdown = document.getElementById('videoOverlayCountdown');
     
     const isLive = data.status === 'LIVE';
     
@@ -211,6 +212,15 @@ function handleStreamStatusUpdate(data) {
     
     if (statusText) {
         statusText.textContent = isLive ? 'LIVE' : 'OFFLINE';
+    }
+    
+    // Toggle video overlay countdown
+    if (videoOverlayCountdown) {
+        if (isLive) {
+            videoOverlayCountdown.classList.remove('active');
+        } else {
+            videoOverlayCountdown.classList.add('active');
+        }
     }
     
     // Update viewer count if provided

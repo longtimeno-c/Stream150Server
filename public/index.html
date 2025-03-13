@@ -57,6 +57,8 @@
                     <source src="" type="application/x-mpegURL">
                     Your browser does not support the video element.
                 </video>
+                <!-- Video Overlay Countdown -->
+                <div id="videoOverlayCountdown" class="video-overlay-countdown"></div>
                 <div class="status-bar">
                     <div id="status" class="status-indicator offline">
                         <span class="status-dot"></span>
@@ -313,6 +315,14 @@
 
             video.muted = true;
             video.autoplay = true;
+            
+            // Check if stream is offline and show countdown overlay
+            const statusElement = document.getElementById('status');
+            const videoOverlayCountdown = document.getElementById('videoOverlayCountdown');
+            
+            if (statusElement && videoOverlayCountdown && statusElement.classList.contains('offline')) {
+                videoOverlayCountdown.classList.add('active');
+            }
             
             if (Hls.isSupported()) {
                 console.log('✅ HLS.js is supported');
