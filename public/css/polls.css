@@ -8,8 +8,12 @@
     color: white;
     display: none;
     animation: fadeIn 0.5s ease-out;
-    transition: all 0.5s ease-out, margin 0.5s ease-out, padding 0.5s ease-out, height 0.5s ease-out;
-    overflow: hidden;
+    transition: all 0.5s ease-out;
+    overflow: visible; /* Changed from hidden to prevent height issues */
+    position: relative;
+    z-index: 4; /* Ensure polls stay above all other content */
+    min-height: fit-content; /* Ensure minimum height based on content */
+    height: auto !important; /* Force height auto */
 }
 
 .poll-container.removing,
@@ -453,13 +457,14 @@
 }
 
 /* Mobile Specific Styles */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     .poll-container {
         display: none !important;
     }
     
     .mobile-poll-container {
         margin: 10px;
+        z-index: 4;
     }
     
     .poll-option {
@@ -478,9 +483,84 @@
     }
 }
 
-/* Desktop Specific Styles */
-@media (min-width: 769px) {
+/* Desktop and iPad Styles */
+@media (min-width: 768px) {
     .mobile-poll-container {
         display: none !important;
+    }
+    
+    .poll-container {
+        margin: 15px 0;
+        width: 100%;
+        box-sizing: border-box;
+        min-height: fit-content;
+        height: auto !important;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+    }
+    
+    .poll-content {
+        width: 100%;
+        height: auto !important;
+        min-height: fit-content;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .poll-options {
+        width: 100%;
+        height: auto !important;
+        min-height: fit-content;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    /* Specific adjustments for iPad/tablet */
+    @media (max-width: 1024px) {
+        .poll-container {
+            margin: 15px 0 25px 0;
+            padding: 20px;
+            height: auto !important;
+            min-height: fit-content;
+            display: flex !important;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .poll-content {
+            width: 100%;
+            height: auto !important;
+            display: flex !important;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .poll-content h3 {
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .poll-options {
+            width: 100%;
+            display: flex !important;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .poll-option {
+            width: 100%;
+            padding: 15px 70px 15px 15px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .poll-footer {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
     }
 } 
