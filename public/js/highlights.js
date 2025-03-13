@@ -7,7 +7,7 @@ window.HighlightsManager = (function() {
     // Configuration
     const CONFIG = {
         MAX_HIGHLIGHTS: 6,                // Maximum number of highlights to display
-        ADMIN_USERNAME: 'Stream150Admin', // Admin username with upload privileges
+        ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'Tristan', // Admin username from environment variable with fallback
         STORAGE_KEY: 'stream150Highlights' // Local storage key for highlights
     };
 
@@ -24,9 +24,6 @@ window.HighlightsManager = (function() {
             videoId: '9QnVbfKd7is'
         }
     ];
-
-    // Private state
-    let currentUsername = null;
     
     // DOM elements
     let desktopHighlightsContainer;
@@ -42,7 +39,6 @@ window.HighlightsManager = (function() {
     let youtubeUrlInput;
     let userHighlights = [];
     let isAdmin = false;
-    let useServerStorage = false; // Flag to indicate if we're using server storage
 
     // Track which highlights have been dispatched to prevent duplicates
     const dispatchedHighlights = new Set();
