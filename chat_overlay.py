@@ -76,6 +76,15 @@ class YouTubeChatFetcher:
         self.channel_id = YOUTUBE_CHANNEL_ID
         self.processed_message_ids = set()  # Track processed message IDs
         self.session = None
+        # Add new fields for quota optimization
+        self.next_page_token = None  # For pagination
+        self.message_fetch_interval = 5  # Dynamic interval that will adjust based on activity
+        self.min_fetch_interval = 5  # Minimum interval (5 seconds)
+        self.max_fetch_interval = 30  # Maximum interval (30 seconds)
+        self.messages_per_fetch = 0  # Track messages per fetch for dynamic adjustment
+        self.last_stream_check = 0  # Last time we checked if stream was live
+        self.stream_check_interval = 60  # Check stream status every 60 seconds
+        self.last_chat_id = None  # Store last known chat ID
 
     async def get_live_chat_id(self):
         """Retrieve the Live Chat ID for the current live stream, retrying every 30s if not found."""
@@ -83,14 +92,21 @@ class YouTubeChatFetcher:
             if not self.session:
                 self.session = aiohttp.ClientSession()
 
+            # Only check for live stream if enough time has passed
+            current_time = time.time()
+            if self.last_chat_id and (current_time - self.last_stream_check) < self.stream_check_interval:
+                self.live_chat_id = self.last_chat_id
+                return
+
+            self.last_stream_check = current_time
+
             # First try searching for active live streams
-            search_url = f"https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId={self.channel_id}&eventType=live&type=video&key={self.api_key}"
+            search_url = f"https://www.googleapis.com/youtube/v3/search?part=id&channelId={self.channel_id}&eventType=live&type=video&key={self.api_key}"
             print(f"Searching for live streams on channel: {self.channel_id}")
 
             try:
                 async with self.session.get(search_url) as response:
                     search_response = await response.json()
-                    print("Search API Response:", json.dumps(search_response, indent=2))
 
                 if "error" in search_response:
                     print(f"❌ YouTube API Error: {search_response['error'].get('message', 'Unknown error')}")
@@ -106,11 +122,10 @@ class YouTubeChatFetcher:
                         print(f"Found video: {video_id}, checking if live...")
                         
                         # Get video details to confirm it's live and get chat ID
-                        chat_url = f"https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,snippet&id={video_id}&key={self.api_key}"
+                        chat_url = f"https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id={video_id}&key={self.api_key}"
                         
                         async with self.session.get(chat_url) as response:
                             chat_response = await response.json()
-                            print("Video API Response:", json.dumps(chat_response, indent=2))
 
                         if "items" in chat_response and chat_response["items"]:
                             video_details = chat_response["items"][0]
@@ -120,29 +135,28 @@ class YouTubeChatFetcher:
                                 self.live_chat_id = video_details["liveStreamingDetails"].get("activeLiveChatId")
                                 if self.live_chat_id:
                                     print(f"✅ Live Chat ID Found: {self.live_chat_id}")
-                                    print(f"Stream Title: {video_details['snippet']['title']}")
+                                    self.last_chat_id = self.live_chat_id
                                     return
                                 else:
                                     print("❌ Live stream found but no active chat ID")
                             else:
                                 print("❌ Video is not live streaming")
-                else:
-                    print("❌ No active YouTube live stream found. Retrying in 30 seconds...")
 
-                # If we get here, we didn't find a valid live stream
-                print("Debugging info:")
-                print(f"- Channel ID: {self.channel_id}")
-                print(f"- API Key status: {'Valid' if 'error' not in search_response else 'Invalid'}")
-                print("- Make sure you're actually live streaming")
-                print("- Verify the channel ID is correct")
-                print("- Check if the stream is public")
-                
                 await asyncio.sleep(self.retry_interval)
 
             except Exception as e:
                 print(f"Error fetching live chat ID: {e}")
-                print("Full error:", str(e))
                 await asyncio.sleep(self.retry_interval)
+
+    def adjust_fetch_interval(self):
+        """Dynamically adjust the fetch interval based on chat activity"""
+        if self.messages_per_fetch > 10:
+            # High activity - decrease interval
+            self.message_fetch_interval = max(self.min_fetch_interval, self.message_fetch_interval - 1)
+        elif self.messages_per_fetch < 2:
+            # Low activity - increase interval
+            self.message_fetch_interval = min(self.max_fetch_interval, self.message_fetch_interval + 1)
+        self.messages_per_fetch = 0  # Reset counter
 
     async def fetch_chat_messages(self):
         """Continuously fetch live chat messages from YouTube."""
@@ -154,19 +168,34 @@ class YouTubeChatFetcher:
 
         while self.running:
             try:
+                # Include pageToken if we have one
                 url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={self.live_chat_id}&part=snippet,authorDetails&key={self.api_key}"
+                if self.next_page_token:
+                    url += f"&pageToken={self.next_page_token}"
 
                 async with self.session.get(url) as response:
                     chat_response = await response.json()
 
+                if "error" in chat_response:
+                    if "quota" in chat_response["error"].get("message", "").lower():
+                        print("⚠️ API quota exceeded. Increasing intervals...")
+                        self.message_fetch_interval = min(self.max_fetch_interval, self.message_fetch_interval * 2)
+                        self.stream_check_interval = min(300, self.stream_check_interval * 2)  # Max 5 minutes
+                    await asyncio.sleep(self.message_fetch_interval)
+                    continue
+
+                # Store next page token
+                self.next_page_token = chat_response.get("nextPageToken")
+
                 if "items" in chat_response:
+                    self.messages_per_fetch = len(chat_response["items"])
                     for item in chat_response["items"]:
-                        message_id = item["id"]  # Unique message ID
+                        message_id = item["id"]
 
                         # Only process new messages
                         if message_id in self.processed_message_ids:
                             continue
-                        self.processed_message_ids.add(message_id)  # Mark message as processed
+                        self.processed_message_ids.add(message_id)
 
                         author = item["authorDetails"]["displayName"]
                         message = item["snippet"]["displayMessage"]
@@ -174,12 +203,18 @@ class YouTubeChatFetcher:
                         self.send_to_websocket(msg, "youtube")
                         print(f"YouTube | {msg}")
 
-                await asyncio.sleep(5)  # Wait before fetching the next batch of messages
+                    # Adjust fetch interval based on activity
+                    self.adjust_fetch_interval()
+
+                # Use the pollingIntervalMillis from the API response if available
+                interval = chat_response.get("pollingIntervalMillis", self.message_fetch_interval * 1000) / 1000
+                await asyncio.sleep(max(self.min_fetch_interval, min(interval, self.max_fetch_interval)))
 
             except Exception as e:
                 print(f"Error fetching chat messages: {e}")
-                self.live_chat_id = None  # Reset chat ID to trigger reconnection
-                await asyncio.sleep(30)  # Wait before retrying
+                self.live_chat_id = None
+                self.next_page_token = None
+                await asyncio.sleep(30)
 
     def send_to_websocket(self, msg, platform):
         if is_websocket_connected(self.ws):
