@@ -628,7 +628,9 @@ body {
         flex-direction: row;
         padding: 20px;
         gap: 25px;
-        position: relative; /* Establish stacking context */
+        position: relative;
+        min-height: 100vh;
+        padding-bottom: 100px; /* Add space for footer */
     }
     
     .video-container {
@@ -637,14 +639,15 @@ body {
         display: flex;
         flex-direction: column;
         position: relative;
-        z-index: 2; /* Higher than stream highlights */
+        z-index: 2;
     }
     
     .desktop-highlights {
         display: block;
         margin-top: 20px;
+        margin-bottom: 60px; /* Add extra space before footer */
         position: relative;
-        z-index: 1; /* Lower than other content */
+        z-index: 1;
         width: 100%;
     }
     
@@ -679,6 +682,7 @@ body {
         .main-container {
             padding: 15px;
             gap: 20px;
+            padding-bottom: 120px; /* More space for footer on tablet */
         }
         
         .chat-container {
@@ -686,7 +690,7 @@ body {
         }
         
         .desktop-highlights {
-            margin-bottom: 40px; /* Extra space before footer on tablet */
+            margin-bottom: 80px; /* More space before footer on tablet */
         }
     }
     
@@ -1472,6 +1476,9 @@ body {
     border-top: 1px solid #333;
     width: 100%;
     box-sizing: border-box;
+    position: relative;
+    z-index: 4;
+    clear: both; /* Ensure footer clears all floated content */
 }
 
 .footer-content {
@@ -2229,5 +2236,13 @@ body {
     
     .countdown-time {
         gap: 5px;
+    }
+}
+
+/* Update footer positioning for tablet */
+@media (max-width: 1024px) {
+    .stream-footer {
+        margin-top: 40px;
+        padding: 25px 0;
     }
 }
