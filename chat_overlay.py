@@ -76,100 +76,87 @@ class YouTubeChatFetcher:
         self.loop = loop
         self.running = True
         self.live_chat_id = None
-        self.retry_interval = 30  # Retry every 30 seconds
         self.processed_message_ids = set()
         self.session = None
+        self.api_key = YOUTUBE_API_KEY
+        self.channel_id = YOUTUBE_CHANNEL_ID
 
     async def get_live_chat_id(self):
-        """Retrieve the Live Chat ID for the current live stream, retrying every 30s if not found."""
+        """Retrieve the Live Chat ID for the current live stream."""
+        search_url = f"https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId={self.channel_id}&eventType=live&type=video&key={self.api_key}"
+
         if not self.session:
             self.session = aiohttp.ClientSession()
-            
-        while self.running and not self.live_chat_id:
-            search_url = f"https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId={YOUTUBE_CHANNEL_ID}&eventType=live&type=video&key={YOUTUBE_API_KEY}"
-            
-            try:
-                async with self.session.get(search_url) as response:
-                    search_response = await response.json()
 
-                if "items" in search_response and search_response["items"]:
-                    video_id = None
-                    for item in search_response["items"]:
-                        if item["snippet"]["liveBroadcastContent"] == "live":
-                            video_id = item["id"]["videoId"]
-                            break
+        try:
+            async with self.session.get(search_url) as response:
+                search_response = await response.json()
 
-                    if video_id:
-                        chat_url = f"https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id={video_id}&key={YOUTUBE_API_KEY}"
-                        async with self.session.get(chat_url) as response:
-                            chat_response = await response.json()
+            if "items" in search_response and search_response["items"]:
+                video_id = None
+                for item in search_response["items"]:
+                    if item["snippet"]["liveBroadcastContent"] == "live":
+                        video_id = item["id"]["videoId"]
+                        break
 
-                        if "items" in chat_response and chat_response["items"]:
-                            self.live_chat_id = chat_response["items"][0]["liveStreamingDetails"]["activeLiveChatId"]
-                            print(f"✅ Live Chat ID Found: {self.live_chat_id}")
-                            return
-                        else:
-                            print("❌ Live stream found, but no active chat detected.")
+                if video_id:
+                    chat_url = f"https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id={video_id}&key={self.api_key}"
+
+                    async with self.session.get(chat_url) as response:
+                        chat_response = await response.json()
+
+                    if "items" in chat_response and chat_response["items"]:
+                        self.live_chat_id = chat_response["items"][0]["liveStreamingDetails"]["activeLiveChatId"]
+                        print(f"✅ Live Chat ID Found: {self.live_chat_id}")
+                        return True
                     else:
-                        print("❌ No live video found.")
+                        print("❌ Live stream found, but no active chat detected.")
                 else:
-                    print("❌ No active YouTube live stream found. Retrying in 30 seconds...")
+                    print("❌ No live video found.")
+            else:
+                print("❌ No active YouTube live stream found. Retrying in 30 seconds...")
 
-                await asyncio.sleep(self.retry_interval)
-            except Exception as e:
-                print(f"Error fetching live chat ID: {e}")
-                await asyncio.sleep(self.retry_interval)
+            return False
+        except Exception as e:
+            print(f"Error fetching live chat ID: {e}")
+            return False
 
     async def fetch_chat_messages(self):
         """Continuously fetch live chat messages from YouTube."""
         while self.running:
-            try:
-                # Reset live_chat_id and try to get a new one
-                self.live_chat_id = None
-                await self.get_live_chat_id()
-
-                if not self.live_chat_id:
-                    print("❌ No live chat available. Retrying...")
+            if not self.live_chat_id:
+                success = await self.get_live_chat_id()
+                if not success:
+                    await asyncio.sleep(30)  # Wait 30 seconds before retrying
                     continue
 
-                print(f"Successfully connected to YouTube live chat, monitoring for messages...")
-                url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={self.live_chat_id}&part=snippet,authorDetails&key={YOUTUBE_API_KEY}"
+            url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={self.live_chat_id}&part=snippet,authorDetails&key={self.api_key}"
 
-                while self.running and self.live_chat_id:
-                    try:
-                        async with self.session.get(url) as response:
-                            if response.status != 200:
-                                error_text = await response.text()
-                                print(f"YouTube API error (status {response.status}): {error_text}")
-                                self.live_chat_id = None
-                                break
+            try:
+                async with self.session.get(url) as response:
+                    chat_response = await response.json()
 
-                            chat_response = await response.json()
-                            if "items" in chat_response:
-                                for item in chat_response["items"]:
-                                    message_id = item["id"]
-                                    if message_id not in self.processed_message_ids:
-                                        self.processed_message_ids.add(message_id)
-                                        username = item["authorDetails"]["displayName"]
-                                        message = item["snippet"]["displayMessage"]
-                                        msg = f"{username}: {message}"
-                                        self.send_to_websocket(msg, "youtube")
-                                        print(f"YouTube | {msg}")
+                if "items" in chat_response:
+                    for item in chat_response["items"]:
+                        message_id = item["id"]
+                        if message_id not in self.processed_message_ids:
+                            self.processed_message_ids.add(message_id)
+                            author = item["authorDetails"]["displayName"]
+                            message = item["snippet"]["displayMessage"]
+                            msg = f"{author}: {message}"
+                            self.send_to_websocket(msg, "youtube")
+                            print(f"YouTube | {msg}")
 
-                        await asyncio.sleep(5)  # Wait before fetching next batch
-                    except Exception as e:
-                        print(f"Error fetching chat messages: {e}")
-                        self.live_chat_id = None
-                        break
+                # Clean up processed messages periodically
+                if len(self.processed_message_ids) > 10000:
+                    self.processed_message_ids.clear()
+
+                await asyncio.sleep(5)  # Wait before next poll
 
             except Exception as e:
-                print(f"Unexpected error in YouTube chat fetcher: {e}")
-                await asyncio.sleep(self.retry_interval)
-
-            # Limit the size of processed_message_ids
-            if len(self.processed_message_ids) > 10000:
-                print(f"Clearing message ID cache (was {len(self.processed_message_ids)} items)")
-                self.processed_message_ids.clear()
+                print(f"Error fetching chat messages: {e}")
+                self.live_chat_id = None  # Reset chat ID to trigger reconnection
+                await asyncio.sleep(30)  # Wait before retrying
 
     def send_to_websocket(self, msg, platform):
         if is_websocket_connected(self.ws):
@@ -183,6 +170,10 @@ class YouTubeChatFetcher:
                 }))
             except Exception as e:
                 print(f"Error sending YouTube message to WebSocket: {e}")
+
+    def stop(self):
+        """Stop fetching chat messages."""
+        self.running = False
 
     async def cleanup(self):
         self.running = False
@@ -287,41 +278,27 @@ if __name__ == "__main__":
                     if youtube_task is None or youtube_task.done():
                         youtube_task = asyncio.create_task(youtube_fetcher.fetch_chat_messages())
                     
-                    # Wait for a short time to check if we should continue running
                     await asyncio.sleep(1)
                     
-                    # Check if any task failed and needs to be restarted
-                    if twitch_task.done() and not twitch_task.cancelled():
-                        try:
-                            twitch_task.result()  # This will raise any exception that occurred
-                            print("Twitch task completed unexpectedly, will restart")
-                        except Exception as e:
-                            print(f"Twitch task failed with error: {e}, will restart")
-                        twitch_task = asyncio.create_task(twitch_bot.reconnect_twitch())
-                    
-                    if youtube_task.done() and not youtube_task.cancelled():
-                        try:
-                            youtube_task.result()  # This will raise any exception that occurred
-                            print("YouTube task completed unexpectedly, will restart")
-                        except Exception as e:
-                            print(f"YouTube task failed with error: {e}, will restart")
-                        youtube_task = asyncio.create_task(youtube_fetcher.fetch_chat_messages())
+                    # Check for task failures
+                    for task in [twitch_task, youtube_task]:
+                        if task and task.done() and not task.cancelled():
+                            try:
+                                task.result()
+                            except Exception as e:
+                                print(f"Task failed with error: {e}, will restart")
                 
-                except asyncio.CancelledError:
-                    print("Tasks cancelled, but will be restarted")
                 except Exception as e:
-                    print(f"Error in main loop: {e}, continuing...")
-                    await asyncio.sleep(5)  # Wait a bit before retrying
+                    print(f"Error in main loop: {e}")
+                    await asyncio.sleep(5)
             
-            # If we get here, running has been set to False, so we're shutting down
+            # Shutdown
             print("Shutting down tasks...")
-            if twitch_task and not twitch_task.done():
-                twitch_task.cancel()
-            if youtube_task and not youtube_task.done():
-                youtube_task.cancel()
-                
+            for task in [twitch_task, youtube_task]:
+                if task and not task.done():
+                    task.cancel()
+                    
         finally:
-            # Ensure proper cleanup
             await youtube_fetcher.cleanup()
             print("Cleanup completed")
     
