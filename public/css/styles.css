@@ -734,7 +734,11 @@ body {
 /* Add desktop-specific video container size */
 @media (min-width: 1200px) {
     .video-container {
-        flex: 2.5 !important; /* Reduce the video container size on desktop */
+        flex: 1.5 !important; /* Make video container about half size on desktop */
+    }
+    
+    .chat-container {
+        flex: 1;
     }
 }
 
