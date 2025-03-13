@@ -45,164 +45,62 @@
 </head>
 
 <body>
-    <div class="page-wrapper">
-        <header class="header">
-            <a href="https://stream150.com" class="header-link">
-                <h1><img src="150logo.ico" alt="Stream150 Logo" class="header-logo">Stream150</h1>
-            </a>
-        </header>
-        
-        <div class="main-container">
-            <div class="video-container">
-                <div class="video-player">
-                    <video id="videoPlayer" class="video-element" playsinline controls>
-                        <source src="" type="application/x-mpegURL">
-                        Your browser does not support the video element.
-                    </video>
-                    <div class="status-bar">
-                        <div id="status" class="status-indicator offline">
-                            <span class="status-dot"></span>
-                            <span id="statusText">OFFLINE</span>
-                        </div>
-                        <div class="viewer-count">
-                            <span id="viewerCount">0</span> viewers
-                        </div>
+    <div class="header">
+        <a href="https://stream150.com" class="header-link">
+            <h1><img src="150logo.ico" alt="Stream150 Logo" class="header-logo">Stream150</h1>
+        </a>
+    </div>
+    <div class="main-container">
+        <div class="video-container">
+            <div class="video-player">
+                <video id="videoPlayer" class="video-element" playsinline controls>
+                    <source src="" type="application/x-mpegURL">
+                    Your browser does not support the video element.
+                </video>
+                <div class="status-bar">
+                    <div id="status" class="status-indicator offline">
+                        <span class="status-dot"></span>
+                        <span id="statusText">OFFLINE</span>
                     </div>
-                    <div class="controls">
-                        <button class="live-btn" onclick="jumpToLive()" title="Jump to Live">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="8" x2="12" y2="12"></line>
-                                <line x1="12" y1="16" x2="12" y2="16"></line>
-                            </svg>
-                            <span>LIVE</span>
-                        </button>
-                        <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Full Screen">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
-                            </svg>
-                        </button>
-                        <select id="qualitySelect" class="quality-select" title="Video Quality">
-                            <option value="-1">Auto</option>
-                            <option value="0">1080p HD</option>
-                            <option value="1">720p HD</option>
-                            <option value="2">480p</option>
-                        </select>
+                    <div class="viewer-count">
+                        <span id="viewerCount">0</span> viewers
                     </div>
                 </div>
-                
-                <!-- Poll Container for Desktop -->
-                <div class="poll-container"></div>
-                
-                <!-- Poll Admin Controls -->
-                <div class="poll-admin-controls" id="pollAdminControls">
-                    <button class="create-poll-btn" onclick="PollManager.createPoll()">Create Poll</button>
-                </div>
-                
-                <!-- Stream Highlights Section - Desktop Only -->
-                <div class="stream-highlights desktop-highlights">
-                    <h3 class="highlights-title">Stream Highlights</h3>
-                    <span class="highlights-count"><span id="highlightCount">0</span>/<span id="maxHighlights">6</span></span>
-                    <div class="highlights-container">
-                        <!-- YouTube Embed Card -->
-                        <div class="highlight-card youtube-embed" data-id="highlight-1">
-                            <div class="highlight-thumbnail youtube-preview" data-video-id="9QnVbfKd7is">
-                                <img src="https://img.youtube.com/vi/9QnVbfKd7is/mqdefault.jpg" alt="YouTube Preview" class="youtube-thumbnail">
-                                <div class="highlight-duration">YouTube</div>
-                                <div class="highlight-play-button">
-                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                        <path d="M8 5v14l11-7z"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="highlight-info">
-                                <h4>Featured YouTube Clip</h4>
-                                <span class="highlight-date">From YouTube</span>
-                            </div>
-                        </div>
-                        <div class="highlight-card" data-id="highlight-2">
-                            <div class="highlight-thumbnail">
-                                <div class="highlight-duration">1:30</div>
-                                <div class="highlight-play-button">
-                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                        <path d="M8 5v14l11-7z"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="highlight-info">
-                                <h4>Hilarious Moment</h4>
-                                <span class="highlight-date">1 week ago</span>
-                            </div>
-                        </div>
-                        <div class="highlight-card upload-card">
-                            <div class="highlight-thumbnail upload-thumbnail">
-                                <div class="upload-icon">
-                                    <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
-                                        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="highlight-info">
-                                <h4>Upload New Highlight</h4>
-                                <span class="highlight-date">Add your own clips</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="debug-controls" style="text-align: center; margin-top: 10px; display: none;" id="adminDebugControls">
-                        <button onclick="HighlightsManager.checkAdminStatus(); alert('Admin check complete. Check console for details.');" class="debug-btn">Debug Admin Status</button>
-                    </div>
+                <div class="controls">
+                    <button class="live-btn" onclick="jumpToLive()" title="Jump to Live">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12" y2="16"></line>
+                        </svg>
+                        <span>LIVE</span>
+                    </button>
+                    <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Full Screen">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                        </svg>
+                    </button>
+                    <select id="qualitySelect" class="quality-select" title="Video Quality">
+                        <option value="-1">Auto</option>
+                        <option value="0">1080p HD</option>
+                        <option value="1">720p HD</option>
+                        <option value="2">480p</option>
+                    </select>
                 </div>
             </div>
             
-            <div class="chat-container">
-                <div class="chat-header">
-                    <h3>Live Chat</h3>
-                    <div class="username-display">
-                        <span>You: <span class="current-username">Anonymous</span></span>
-                        <button class="username-change-btn" onclick="UserManager.changeUsername()">Change</button>
-                    </div>
-                    <span class="chat-status"></span>
-                </div>
-                
-                <!-- Poll Container for Mobile -->
-                <div class="mobile-poll-container"></div>
-                
-                <div id="chatBox" class="chat-box"></div>
-                <div class="chat-input-container">
-                    <input type="text" id="chatInput" class="chat-input" placeholder="Send a message...">
-                    <button class="chat-send-btn" onclick="sendChat()">Send</button>
-                </div>
-                
-                <!-- Donation Buttons -->
-                <div class="donation-buttons">
-                    <a href="https://tangia.co/westboys1912" target="_blank" class="donation-btn tangia">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/>
-                        </svg>
-                        <span>Tangia</span>
-                    </a>
-                    <a href="https://www.paypal.com/pool/9c2agpViJU?sr=ancr" target="_blank" class="donation-btn paypal">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 3.72a.775.775 0 0 1 .766-.667h7.505c2.274 0 3.938.453 4.941 1.347.898.798 1.262 1.972 1.078 3.474-.005.043-.01.086-.017.129-.71 4.36-3.014 5.87-5.997 5.87H9.503a.77.77 0 0 0-.759.65L7.076 21.337zM19.905 7.178c.016-.13.03-.26.041-.39.213-2.318-.419-4.114-1.878-5.337C16.56.14 14.188-.336 11.34.267a1.55 1.55 0 0 0-1.21 1.334L7.011 18.824a1.282 1.282 0 0 0 1.265 1.48h4.611l1.102-6.93a.64.64 0 0 1 .632-.537h2.777c3.525 0 6.503-1.876 7.333-7.316a.018.018 0 0 1 .011-.003c.102-.445.16-.907.163-1.34z"/>
-                        </svg>
-                        <span>PayPal</span>
-                    </a>
-                </div>
-                
-                <div id="countdown" class="below-chat-countdown"></div>
-                <!-- <div class="chat-debug-controls" style="margin-top: 10px; text-align: right; font-size: 12px;">
-                    <button onclick="debugChatHistory()" class="debug-btn">Debug Chat</button>
-                    <button onclick="testSetLiveStatus()" class="debug-btn">Test LIVE Status</button>
-                </div> -->
+            <!-- Poll Container for Desktop -->
+            <div class="poll-container"></div>
+            
+            <!-- Poll Admin Controls -->
+            <div class="poll-admin-controls" id="pollAdminControls">
+                <button class="create-poll-btn" onclick="PollManager.createPoll()">Create Poll</button>
             </div>
             
-            <!-- Mobile divider between chat and highlights -->
-            <div class="mobile-section-divider"></div>
-            
-            <!-- Stream Highlights Section - Mobile Only -->
-            <div class="stream-highlights mobile-highlights">
+            <!-- Stream Highlights Section - Desktop Only -->
+            <div class="stream-highlights desktop-highlights">
                 <h3 class="highlights-title">Stream Highlights</h3>
-                <span class="highlights-count"><span id="mobileHighlightCount">0</span>/<span id="mobileMaxHighlights">6</span></span>
+                <span class="highlights-count"><span id="highlightCount">0</span>/<span id="maxHighlights">6</span></span>
                 <div class="highlights-container">
                     <!-- YouTube Embed Card -->
                     <div class="highlight-card youtube-embed" data-id="highlight-1">
@@ -248,35 +146,32 @@
                         </div>
                     </div>
                 </div>
-                <div class="debug-controls" style="text-align: center; margin-top: 10px; display: none;" id="mobileAdminDebugControls">
+                <div class="debug-controls" style="text-align: center; margin-top: 10px; display: none;" id="adminDebugControls">
                     <button onclick="HighlightsManager.checkAdminStatus(); alert('Admin check complete. Check console for details.');" class="debug-btn">Debug Admin Status</button>
                 </div>
             </div>
         </div>
-
-        <button class="chat-toggle" onclick="toggleChat()" style="display: none;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            Chat
-        </button>
-
-        <div class="mobile-chat-overlay" id="mobileChatOverlay" style="display: none;">
-            <div class="mobile-chat-header">
+        
+        <div class="chat-container">
+            <div class="chat-header">
                 <h3>Live Chat</h3>
-                <div class="mobile-username-display">
+                <div class="username-display">
                     <span>You: <span class="current-username">Anonymous</span></span>
                     <button class="username-change-btn" onclick="UserManager.changeUsername()">Change</button>
                 </div>
-                <button class="close-chat-btn" onclick="toggleChat()">×</button>
-            </div>
-            <div id="mobileChatBox" class="chat-box"></div>
-            <div class="chat-input-container">
-                <input type="text" id="mobileChatInput" class="chat-input" placeholder="Send a message...">
-                <button class="chat-send-btn" onclick="sendMobileChat()">Send</button>
+                <span class="chat-status"></span>
             </div>
             
-            <!-- Donation Buttons for Mobile Overlay -->
+            <!-- Poll Container for Mobile -->
+            <div class="mobile-poll-container"></div>
+            
+            <div id="chatBox" class="chat-box"></div>
+            <div class="chat-input-container">
+                <input type="text" id="chatInput" class="chat-input" placeholder="Send a message...">
+                <button class="chat-send-btn" onclick="sendChat()">Send</button>
+            </div>
+            
+            <!-- Donation Buttons -->
             <div class="donation-buttons">
                 <a href="https://tangia.co/westboys1912" target="_blank" class="donation-btn tangia">
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
@@ -291,94 +186,108 @@
                     <span>PayPal</span>
                 </a>
             </div>
+            
+            <div id="countdown" class="below-chat-countdown"></div>
+            <!-- <div class="chat-debug-controls" style="margin-top: 10px; text-align: right; font-size: 12px;">
+                <button onclick="debugChatHistory()" class="debug-btn">Debug Chat</button>
+                <button onclick="testSetLiveStatus()" class="debug-btn">Test LIVE Status</button>
+            </div> -->
         </div>
-
-        <footer class="stream-footer">
-            <div class="footer-content">
-                <h3>Also watch on:</h3>
-                <div class="social-links">
-                    <a href="https://twitch.tv/westboys1912" target="_blank" class="social-link twitch">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
-                        </svg>
-                        <span>Twitch</span>
-                    </a>
-                    <a href="https://youtube.com/@westboys1912" target="_blank" class="social-link youtube">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                        </svg>
-                        <span>YouTube</span>
-                    </a>
-                    <a href="https://x.com/retristanhill" target="_blank" class="social-link twitter">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                        </svg>
-                        <span>X</span>
-                    </a>
+        
+        <!-- Mobile divider between chat and highlights -->
+        <div class="mobile-section-divider"></div>
+        
+        <!-- Stream Highlights Section - Mobile Only -->
+        <div class="stream-highlights mobile-highlights">
+            <h3 class="highlights-title">Stream Highlights</h3>
+            <span class="highlights-count"><span id="mobileHighlightCount">0</span>/<span id="mobileMaxHighlights">6</span></span>
+            <div class="highlights-container">
+                <!-- YouTube Embed Card -->
+                <div class="highlight-card youtube-embed" data-id="highlight-1">
+                    <div class="highlight-thumbnail youtube-preview" data-video-id="9QnVbfKd7is">
+                        <img src="https://img.youtube.com/vi/9QnVbfKd7is/mqdefault.jpg" alt="YouTube Preview" class="youtube-thumbnail">
+                        <div class="highlight-duration">YouTube</div>
+                        <div class="highlight-play-button">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-info">
+                        <h4>Featured YouTube Clip</h4>
+                        <span class="highlight-date">From YouTube</span>
+                    </div>
                 </div>
-                <div class="footer-copyright">
-                    <p>© 2024 Stream150. All rights reserved.</p>
+                <div class="highlight-card" data-id="highlight-2">
+                    <div class="highlight-thumbnail">
+                        <div class="highlight-duration">1:30</div>
+                        <div class="highlight-play-button">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-info">
+                        <h4>Hilarious Moment</h4>
+                        <span class="highlight-date">1 week ago</span>
+                    </div>
+                </div>
+                <div class="highlight-card upload-card">
+                    <div class="highlight-thumbnail upload-thumbnail">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+                                <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-info">
+                        <h4>Upload New Highlight</h4>
+                        <span class="highlight-date">Add your own clips</span>
+                    </div>
                 </div>
             </div>
-        </footer>
-    </div>
-    
-    <!-- YouTube Modal -->
-    <div class="youtube-modal" id="youtubeModal">
-        <div class="youtube-modal-content">
-            <button class="youtube-modal-close" id="closeYoutubeModal">&times;</button>
-            <div class="youtube-iframe-container">
-                <iframe id="youtubeIframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            <div class="debug-controls" style="text-align: center; margin-top: 10px; display: none;" id="mobileAdminDebugControls">
+                <button onclick="HighlightsManager.checkAdminStatus(); alert('Admin check complete. Check console for details.');" class="debug-btn">Debug Admin Status</button>
             </div>
         </div>
     </div>
 
-    <!-- Upload Modal -->
-    <div class="upload-modal" id="uploadModal">
-        <div class="upload-modal-content">
-            <h2>Upload Highlight</h2>
-            <form id="uploadForm">
-                <div class="upload-form-group">
-                    <label for="highlightTitle">Title</label>
-                    <input type="text" id="highlightTitle" placeholder="Enter a title for your highlight" required>
-                </div>
-                
-                <div class="upload-form-group">
-                    <label>Thumbnail</label>
-                    <div class="file-upload-area" id="thumbnailUploadArea">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/>
-                        </svg>
-                        <p>Click to upload thumbnail image</p>
-                        <input type="file" id="thumbnailFile" accept="image/*">
-                    </div>
-                    <div class="upload-preview" id="thumbnailPreview">
-                        <img id="thumbnailImage" src="" alt="Thumbnail preview">
-                    </div>
-                </div>
+    <button class="chat-toggle" onclick="toggleChat()" style="display: none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Chat
+    </button>
 
-                <div class="upload-or-text">OR</div>
-
-                <div class="upload-form-group">
-                    <label for="youtubeUrl">YouTube URL</label>
-                    <div class="youtube-url-input">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73z"/>
-                        </svg>
-                        <input type="url" id="youtubeUrl" placeholder="Or paste a YouTube video URL">
-                    </div>
-                </div>
-
-                <div class="upload-form-group">
-                    <label for="highlightDuration">Duration (optional)</label>
-                    <input type="text" id="highlightDuration" placeholder="e.g. 2:30">
-                </div>
-
-                <div class="upload-modal-buttons">
-                    <button type="button" class="upload-cancel" id="cancelUpload">Cancel</button>
-                    <button type="submit" class="upload-submit" id="submitUpload">Upload</button>
-                </div>
-            </form>
+    <div class="mobile-chat-overlay" id="mobileChatOverlay" style="display: none;">
+        <div class="mobile-chat-header">
+            <h3>Live Chat</h3>
+            <div class="mobile-username-display">
+                <span>You: <span class="current-username">Anonymous</span></span>
+                <button class="username-change-btn" onclick="UserManager.changeUsername()">Change</button>
+            </div>
+            <button class="close-chat-btn" onclick="toggleChat()">×</button>
+        </div>
+        <div id="mobileChatBox" class="chat-box"></div>
+        <div class="chat-input-container">
+            <input type="text" id="mobileChatInput" class="chat-input" placeholder="Send a message...">
+            <button class="chat-send-btn" onclick="sendMobileChat()">Send</button>
+        </div>
+        
+        <!-- Donation Buttons for Mobile Overlay -->
+        <div class="donation-buttons">
+            <a href="https://tangia.co/westboys1912" target="_blank" class="donation-btn tangia">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/>
+                </svg>
+                <span>Tangia</span>
+            </a>
+            <a href="https://www.paypal.com/pool/9c2agpViJU?sr=ancr" target="_blank" class="donation-btn paypal">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 3.72a.775.775 0 0 1 .766-.667h7.505c2.274 0 3.938.453 4.941 1.347.898.798 1.262 1.972 1.078 3.474-.005.043-.01.086-.017.129-.71 4.36-3.014 5.87-5.997 5.87H9.503a.77.77 0 0 0-.759.65L7.076 21.337zM19.905 7.178c.016-.13.03-.26.041-.39.213-2.318-.419-4.114-1.878-5.337C16.56.14 14.188-.336 11.34.267a1.55 1.55 0 0 0-1.21 1.334L7.011 18.824a1.282 1.282 0 0 0 1.265 1.48h4.611l1.102-6.93a.64.64 0 0 1 .632-.537h2.777c3.525 0 6.503-1.876 7.333-7.316a.018.018 0 0 1 .011-.003c.102-.445.16-.907.163-1.34z"/>
+                </svg>
+                <span>PayPal</span>
+            </a>
         </div>
     </div>
 
@@ -785,6 +694,94 @@
             }
         }
     </script>
+
+    <footer class="stream-footer">
+        <div class="footer-content">
+            <h3>Also watch on:</h3>
+            <div class="social-links">
+                <a href="https://twitch.tv/westboys1912" target="_blank" class="social-link twitch">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                    </svg>
+                    <span>Twitch</span>
+                </a>
+                <a href="https://youtube.com/@westboys1912" target="_blank" class="social-link youtube">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span>YouTube</span>
+                </a>
+                <a href="https://x.com/retristanhill" target="_blank" class="social-link twitter">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span>X</span>
+                </a>
+            </div>
+            <div class="footer-copyright">
+                <p>© 2024 Stream150. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- YouTube Modal -->
+    <div class="youtube-modal" id="youtubeModal">
+        <div class="youtube-modal-content">
+            <button class="youtube-modal-close" id="closeYoutubeModal">&times;</button>
+            <div class="youtube-iframe-container">
+                <iframe id="youtubeIframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="upload-modal" id="uploadModal">
+        <div class="upload-modal-content">
+            <h2>Upload Highlight</h2>
+            <form id="uploadForm">
+                <div class="upload-form-group">
+                    <label for="highlightTitle">Title</label>
+                    <input type="text" id="highlightTitle" placeholder="Enter a title for your highlight" required>
+                </div>
+                
+                <div class="upload-form-group">
+                    <label>Thumbnail</label>
+                    <div class="file-upload-area" id="thumbnailUploadArea">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/>
+                        </svg>
+                        <p>Click to upload thumbnail image</p>
+                        <input type="file" id="thumbnailFile" accept="image/*">
+                    </div>
+                    <div class="upload-preview" id="thumbnailPreview">
+                        <img id="thumbnailImage" src="" alt="Thumbnail preview">
+                    </div>
+                </div>
+
+                <div class="upload-or-text">OR</div>
+
+                <div class="upload-form-group">
+                    <label for="youtubeUrl">YouTube URL</label>
+                    <div class="youtube-url-input">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73z"/>
+                        </svg>
+                        <input type="url" id="youtubeUrl" placeholder="Or paste a YouTube video URL">
+                    </div>
+                </div>
+
+                <div class="upload-form-group">
+                    <label for="highlightDuration">Duration (optional)</label>
+                    <input type="text" id="highlightDuration" placeholder="e.g. 2:30">
+                </div>
+
+                <div class="upload-modal-buttons">
+                    <button type="button" class="upload-cancel" id="cancelUpload">Cancel</button>
+                    <button type="submit" class="upload-submit" id="submitUpload">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 
 </html>
