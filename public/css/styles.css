@@ -624,31 +624,117 @@ body {
 }
 
 /* Desktop layout */
-@media (min-width: 1025px) {
+@media (min-width: 768px) {
     .main-container {
         display: flex;
         flex-direction: row;
         padding: 20px;
         gap: 25px;
+        position: relative;
+        min-height: 100vh;
     }
     
     .video-container {
-        flex: 3; /* Reduced from 4 to 3 to make video smaller */
-        min-width: 0;
+        flex: 4;
+        width: auto;
         display: flex;
         flex-direction: column;
+        position: relative;
+        z-index: 2;
+    }
+    
+    /* Left column container for video and highlights */
+    .video-container {
+        display: flex;
+        flex-direction: column;
+        flex: 4;
+        min-width: 0; /* Allow container to shrink if needed */
+    }
+    
+    .desktop-highlights {
+        display: block;
+        margin-top: 20px;
+        margin-bottom: 60px;
+        position: relative;
+        z-index: 1;
+        width: 100%;
+    }
+    
+    .mobile-highlights {
+        display: none;
     }
     
     .chat-container {
         flex: 1;
-        max-width: 350px;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 112px);
+        position: sticky;
+        top: 72px;
+        max-width: 320px;
+        z-index: 3;
+    }
+    
+    .poll-container {
+        position: relative;
+        z-index: 4; /* Keep polls above all other content */
+    }
+    
+    .stream-footer {
+        position: relative;
+        z-index: 4; /* Keep footer above stream highlights */
+        margin-top: auto; /* Push footer to the bottom */
+    }
+    
+    /* Ensure proper spacing for iPad/tablet */
+    @media (max-width: 1024px) {
+        .main-container {
+            padding: 15px;
+            gap: 20px;
+        }
+        
+        .chat-container {
+            max-width: 280px;
+        }
+        
+        .desktop-highlights {
+            margin-bottom: 80px;
+        }
+    }
+    
+    .chat-box {
+        max-height: none;
+    }
+    
+    .chat-toggle {
+        display: none;
+    }
+    
+    .mobile-chat-overlay {
+        display: none !important;
+    }
+    
+    .status-bar {
+        padding: 15px;
+    }
+    
+    .controls {
+        padding: 15px;
+    }
+    
+    .donation-buttons {
+        padding: 0 15px 15px;
+    }
+    
+    .donation-tracker {
+        padding: 15px;
     }
 }
 
-/* Extra large screens */
-@media (min-width: 1600px) {
+/* Add desktop-specific video container size */
+@media (min-width: 1200px) {
     .video-container {
-        flex: 3.5; /* Slightly larger for very big screens, but still smaller than original */
+        flex: 2.5 !important; /* Reduce the video container size on desktop */
     }
 }
 
