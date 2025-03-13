@@ -7,7 +7,6 @@ const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
 const EventEmitter = require('events');
 const PollManager = require('./server/pollManager');
-const chatApi = require('./server/chatApi');
 
 const STREAM_KEY = 'StreamtoME';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -415,9 +414,6 @@ wss.on('connection', (ws) => {
                     
                     // Broadcast to all clients
                     broadcast(chatMessage);
-                    
-                    // Broadcast to API clients
-                    chatApi.broadcastChatMessage(chatMessage);
                     break;
 
                 case 'REQUEST_CHAT_HISTORY':
@@ -542,8 +538,8 @@ wss.on('connection', (ws) => {
                     }
                     break;
             }
-        } catch (error) {
-            console.error('Error processing WebSocket message:', error);
+        } catch (err) {
+            console.error('Error processing message:', err);
         }
     });
     
@@ -731,24 +727,6 @@ fs.access(hlsDir, fs.constants.F_OK, (err) => {
 
 // Initialize PollManager when server starts
 PollManager.loadPolls();
-
-// Initialize the chat API
-chatApi.initialize(server);
-
-// Add API key management endpoints
-app.use(bodyParser.json());
-
-app.post('/api/keys', (req, res) => {
-    // In a production environment, you should add proper authentication here
-    const apiKey = chatApi.generateApiKey();
-    res.json({ apiKey });
-});
-
-app.delete('/api/keys/:key', (req, res) => {
-    // In a production environment, you should add proper authentication here
-    chatApi.removeApiKey(req.params.key);
-    res.sendStatus(204);
-});
 
 server.listen(3001, () => {
     const isProduction = process.env.NODE_ENV === 'production';
