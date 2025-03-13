@@ -8,10 +8,11 @@
     color: white;
     display: none;
     animation: fadeIn 0.5s ease-out;
-    transition: all 0.5s ease-out, margin 0.5s ease-out, padding 0.5s ease-out, height 0.5s ease-out;
-    overflow: hidden;
+    transition: all 0.5s ease-out;
+    overflow: visible; /* Changed from hidden to prevent height issues */
     position: relative;
     z-index: 4; /* Ensure polls stay above all other content */
+    min-height: fit-content; /* Ensure minimum height based on content */
 }
 
 .poll-container.removing,
@@ -491,21 +492,48 @@
         margin: 15px 0;
         width: 100%;
         box-sizing: border-box;
+        min-height: 100px; /* Minimum height for desktop/iPad */
+        height: auto; /* Allow height to grow with content */
+        display: flex; /* Use flexbox for better content distribution */
+        flex-direction: column;
+    }
+    
+    .poll-content {
+        flex: 1; /* Allow content to take available space */
+        min-height: fit-content;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .poll-options {
+        flex: 1;
+        min-height: fit-content;
     }
     
     /* Specific adjustments for iPad/tablet */
     @media (max-width: 1024px) {
         .poll-container {
             margin: 10px 0 20px 0;
+            min-height: 120px; /* Slightly larger minimum height for iPad */
+            height: auto !important; /* Force height auto */
+            max-height: none !important; /* Remove any max-height restrictions */
+            display: flex !important; /* Ensure display flex is maintained */
         }
         
         .poll-option {
-            padding: 12px 70px 12px 10px; /* Slightly adjusted padding for better touch targets */
+            padding: 12px 70px 12px 10px;
+            min-height: 44px; /* Minimum height for touch targets */
         }
         
         .poll-option-percentage {
             right: 8px;
-            padding: 3px 8px; /* Slightly larger touch target */
+            padding: 3px 8px;
+        }
+        
+        .poll-content {
+            display: flex !important;
+            flex-direction: column;
+            min-height: fit-content;
         }
     }
 } 
