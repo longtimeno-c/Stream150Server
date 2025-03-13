@@ -9,7 +9,7 @@ const NodeMediaServer = require('node-media-server');
 const EventEmitter = require('events');
 const PollManager = require('./server/pollManager');
 
-const STREAM_KEY = 'StreamtoME';
+const STREAM_KEY = process.env.STREAM_KEY || 'Testing';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
 const MAX_CHAT_HISTORY = 100;
 
