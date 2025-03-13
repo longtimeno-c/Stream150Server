@@ -1685,171 +1685,17 @@ body {
     }
 }
 
-/* Tablet/iPad styles */
+/* Tablet styles */
 @media (min-width: 768px) and (max-width: 1024px) {
-    .main-container {
-        display: flex;
-        flex-direction: column;
-        padding: 15px;
-        gap: 20px;
-        min-height: auto;
-        overflow: visible;
-    }
-    
-    .video-container {
-        width: 100%;
-        margin-bottom: 15px;
-    }
-    
-    .chat-container {
-        width: 100%;
-        max-width: 100%;
-        height: 400px;
-        position: static;
-        margin-bottom: 20px;
-    }
-    
-    .stream-highlights {
-        width: 100%;
-        margin-top: 20px;
-        margin-bottom: 60px;
-        position: relative;
-        z-index: 1;
-        overflow: visible;
-    }
-    
     .highlights-container {
         grid-template-columns: repeat(2, 1fr);
-        gap: 15px;
-    }
-    
-    /* Ensure footer stays at the bottom */
-    .stream-footer {
-        position: relative;
-        z-index: 0;
-        margin-top: 30px;
-        padding-top: 30px;
-        clear: both;
-        width: 100%;
-    }
-
-    /* Ensure proper spacing for polls */
-    .poll-container,
-    .mobile-poll-container {
-        margin: 15px 0;
-        width: 100%;
-        box-sizing: border-box;
-        position: relative;
-        z-index: 2;
-    }
-
-    /* Adjust spacing between elements */
-    .poll-container + .stream-highlights,
-    .mobile-poll-container + .stream-highlights {
-        margin-top: 30px;
-    }
-
-    /* Prevent content overflow */
-    body {
-        overflow-x: hidden;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* Ensure main container takes up full height */
-    .main-container {
-        flex: 1;
-        margin-bottom: 30px;
     }
 }
 
-/* Small tablet and large phone styles */
-@media (min-width: 481px) and (max-width: 767px) {
-    .main-container {
-        padding: 10px;
-        gap: 15px;
-        min-height: auto;
-        overflow: visible;
-    }
-
-    .video-container {
-        margin-bottom: 15px;
-    }
-
-    .chat-container {
-        margin-bottom: 20px;
-    }
-
-    .stream-highlights {
-        margin: 20px 0 40px 0;
-        position: relative;
-        z-index: 1;
-    }
-
+/* Desktop styles */
+@media (min-width: 1025px) {
     .highlights-container {
-        grid-template-columns: repeat(1, 1fr);
-        gap: 15px;
-    }
-
-    .poll-container,
-    .mobile-poll-container {
-        margin: 10px 0;
-        width: 100%;
-        position: relative;
-        z-index: 2;
-    }
-
-    .stream-footer {
-        margin-top: 20px;
-        position: relative;
-        z-index: 0;
-        clear: both;
-    }
-}
-
-/* Small phone styles */
-@media (max-width: 480px) {
-    .main-container {
-        padding: 5px;
-        gap: 10px;
-        min-height: auto;
-        overflow: visible;
-    }
-
-    .video-container {
-        margin-bottom: 10px;
-    }
-
-    .chat-container {
-        margin-bottom: 15px;
-    }
-
-    .stream-highlights {
-        margin: 15px 0 30px 0;
-        padding: 10px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .highlights-container {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-
-    .poll-container,
-    .mobile-poll-container {
-        margin: 8px 0;
-        width: 100%;
-        position: relative;
-        z-index: 2;
-    }
-
-    .stream-footer {
-        margin-top: 15px;
-        position: relative;
-        z-index: 0;
-        clear: both;
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
