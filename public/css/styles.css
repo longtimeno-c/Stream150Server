@@ -10,6 +10,9 @@ body {
     color: #ffffff;
     line-height: 1.6;
     overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .header {
@@ -630,7 +633,6 @@ body {
         gap: 25px;
         position: relative;
         min-height: 100vh;
-        padding-bottom: 100px; /* Add space for footer */
     }
     
     .video-container {
@@ -642,10 +644,18 @@ body {
         z-index: 2;
     }
     
+    /* Left column container for video and highlights */
+    .video-container {
+        display: flex;
+        flex-direction: column;
+        flex: 4;
+        min-width: 0; /* Allow container to shrink if needed */
+    }
+    
     .desktop-highlights {
         display: block;
         margin-top: 20px;
-        margin-bottom: 60px; /* Add extra space before footer */
+        margin-bottom: 60px;
         position: relative;
         z-index: 1;
         width: 100%;
@@ -663,7 +673,7 @@ body {
         position: sticky;
         top: 72px;
         max-width: 320px;
-        z-index: 3; /* Keep chat above other elements */
+        z-index: 3;
     }
     
     .poll-container {
@@ -674,7 +684,7 @@ body {
     .stream-footer {
         position: relative;
         z-index: 4; /* Keep footer above stream highlights */
-        margin-top: 30px; /* Ensure space between content and footer */
+        margin-top: auto; /* Push footer to the bottom */
     }
     
     /* Ensure proper spacing for iPad/tablet */
@@ -682,15 +692,14 @@ body {
         .main-container {
             padding: 15px;
             gap: 20px;
-            padding-bottom: 120px; /* More space for footer on tablet */
         }
         
         .chat-container {
-            max-width: 280px; /* Slightly smaller for tablet */
+            max-width: 280px;
         }
         
         .desktop-highlights {
-            margin-bottom: 80px; /* More space before footer on tablet */
+            margin-bottom: 80px;
         }
     }
     
@@ -1472,13 +1481,12 @@ body {
 .stream-footer {
     background-color: #1a1a1a;
     padding: 20px 0;
-    margin-top: 30px;
     border-top: 1px solid #333;
     width: 100%;
     box-sizing: border-box;
     position: relative;
     z-index: 4;
-    clear: both; /* Ensure footer clears all floated content */
+    margin-top: auto; /* Push footer to the bottom */
 }
 
 .footer-content {
@@ -2242,7 +2250,16 @@ body {
 /* Update footer positioning for tablet */
 @media (max-width: 1024px) {
     .stream-footer {
-        margin-top: 40px;
         padding: 25px 0;
+        margin-top: 40px;
     }
+}
+
+/* Main content wrapper */
+.page-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
 }
