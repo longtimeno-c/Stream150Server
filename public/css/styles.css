@@ -628,6 +628,7 @@ body {
         flex-direction: row;
         padding: 20px;
         gap: 25px;
+        position: relative; /* Establish stacking context */
     }
     
     .video-container {
@@ -635,11 +636,16 @@ body {
         width: auto;
         display: flex;
         flex-direction: column;
+        position: relative;
+        z-index: 2; /* Higher than stream highlights */
     }
     
     .desktop-highlights {
         display: block;
         margin-top: 20px;
+        position: relative;
+        z-index: 1; /* Lower than other content */
+        width: 100%;
     }
     
     .mobile-highlights {
@@ -654,6 +660,34 @@ body {
         position: sticky;
         top: 72px;
         max-width: 320px;
+        z-index: 3; /* Keep chat above other elements */
+    }
+    
+    .poll-container {
+        position: relative;
+        z-index: 4; /* Keep polls above all other content */
+    }
+    
+    .stream-footer {
+        position: relative;
+        z-index: 4; /* Keep footer above stream highlights */
+        margin-top: 30px; /* Ensure space between content and footer */
+    }
+    
+    /* Ensure proper spacing for iPad/tablet */
+    @media (max-width: 1024px) {
+        .main-container {
+            padding: 15px;
+            gap: 20px;
+        }
+        
+        .chat-container {
+            max-width: 280px; /* Slightly smaller for tablet */
+        }
+        
+        .desktop-highlights {
+            margin-bottom: 40px; /* Extra space before footer on tablet */
+        }
     }
     
     .chat-box {
@@ -1541,6 +1575,7 @@ body {
     padding: 15px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     position: relative;
+    z-index: 1; /* Ensure proper stacking context */
 }
 
 .highlights-title {
@@ -1687,8 +1722,28 @@ body {
 
 /* Tablet styles */
 @media (min-width: 768px) and (max-width: 1024px) {
+    .stream-highlights {
+        position: relative;
+        z-index: 1;
+        margin-bottom: 20px; /* Add space for footer */
+        width: 100%;
+        clear: both; /* Ensure it clears other floating elements */
+    }
+    
     .highlights-container {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Ensure poll container is properly positioned */
+    .poll-container {
+        position: relative;
+        z-index: 2; /* Higher than stream-highlights */
+    }
+    
+    /* Ensure footer stays on top */
+    .stream-footer {
+        position: relative;
+        z-index: 2; /* Higher than stream-highlights */
     }
 }
 

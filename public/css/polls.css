@@ -10,6 +10,8 @@
     animation: fadeIn 0.5s ease-out;
     transition: all 0.5s ease-out, margin 0.5s ease-out, padding 0.5s ease-out, height 0.5s ease-out;
     overflow: hidden;
+    position: relative;
+    z-index: 4; /* Ensure polls stay above all other content */
 }
 
 .poll-container.removing,
@@ -453,13 +455,14 @@
 }
 
 /* Mobile Specific Styles */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     .poll-container {
         display: none !important;
     }
     
     .mobile-poll-container {
         margin: 10px;
+        z-index: 4;
     }
     
     .poll-option {
@@ -478,9 +481,31 @@
     }
 }
 
-/* Desktop Specific Styles */
-@media (min-width: 769px) {
+/* Desktop and iPad Styles */
+@media (min-width: 768px) {
     .mobile-poll-container {
         display: none !important;
+    }
+    
+    .poll-container {
+        margin: 15px 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Specific adjustments for iPad/tablet */
+    @media (max-width: 1024px) {
+        .poll-container {
+            margin: 10px 0 20px 0;
+        }
+        
+        .poll-option {
+            padding: 12px 70px 12px 10px; /* Slightly adjusted padding for better touch targets */
+        }
+        
+        .poll-option-percentage {
+            right: 8px;
+            padding: 3px 8px; /* Slightly larger touch target */
+        }
     }
 } 
