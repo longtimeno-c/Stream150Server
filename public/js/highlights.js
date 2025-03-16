@@ -7,7 +7,7 @@ window.HighlightsManager = (function() {
     // Configuration
     const CONFIG = {
         MAX_HIGHLIGHTS: 6,                // Maximum number of highlights to display
-        ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'Tristan', // Admin username from environment variable with fallback
+        ADMIN_USERNAME: 'Stream150Admin', // Admin username with upload privileges
         STORAGE_KEY: 'stream150Highlights' // Local storage key for highlights
     };
 
