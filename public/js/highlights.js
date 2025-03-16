@@ -24,6 +24,9 @@ window.HighlightsManager = (function() {
             videoId: '9QnVbfKd7is'
         }
     ];
+
+    // Private state
+    let currentUsername = null;
     
     // DOM elements
     let desktopHighlightsContainer;
@@ -39,6 +42,7 @@ window.HighlightsManager = (function() {
     let youtubeUrlInput;
     let userHighlights = [];
     let isAdmin = false;
+    let useServerStorage = false; // Flag to indicate if we're using server storage
 
     // Track which highlights have been dispatched to prevent duplicates
     const dispatchedHighlights = new Set();
