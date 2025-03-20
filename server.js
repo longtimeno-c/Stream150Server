@@ -8,6 +8,7 @@ const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
 const EventEmitter = require('events');
 const PollManager = require('./server/pollManager');
+const EmailManager = require('./server/emailManager');
 
 const STREAM_KEY = process.env.STREAM_KEY || 'Testing';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -289,6 +290,35 @@ app.get('/check-stream', (req, res) => {
 // Then your existing routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Add email subscription endpoints
+app.post('/api/subscribe', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const result = await EmailManager.addSubscriber(email);
+        if (result) {
+            res.status(200).json({ message: 'Successfully subscribed to notifications' });
+        } else {
+            res.status(400).json({ message: 'Email already subscribed' });
+        }
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+app.post('/api/unsubscribe', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const result = await EmailManager.removeSubscriber(email);
+        if (result) {
+            res.status(200).json({ message: 'Successfully unsubscribed from notifications' });
+        } else {
+            res.status(400).json({ message: 'Email not found in subscribers list' });
+        }
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
 });
 
 // This should be the LAST route
@@ -677,6 +707,12 @@ nms.on('prePublish', (id, StreamPath, args) => {
             status: 'LIVE',
             viewers: viewerCount 
         });
+
+        // Send email notifications when stream starts
+        if (EmailManager.isNotificationsEnabled()) {
+            EmailManager.sendStreamNotification()
+                .catch(error => console.error('Error sending stream notifications:', error));
+        }
         return;
     }
 

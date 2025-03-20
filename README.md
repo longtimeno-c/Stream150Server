@@ -9,6 +9,7 @@ A real-time streaming platform that supports live chat from both Twitch and YouT
 - Stream highlights
 - HLS streaming support
 - WebSocket-based real-time updates
+- Email notifications when stream goes live
 
 ## Prerequisites
 
@@ -54,6 +55,11 @@ STREAM_KEY=your_stream_key
 
 # Admin Configuration
 ADMIN_USERNAME=your_admin_username  # Username with admin privileges for managing highlights
+
+# Email Notifications
+EMAIL_NOTIFICATIONS_ENABLED=true
+PROTONMAIL_USER=your_protonmail_email
+PROTONMAIL_PASS=your_protonmail_password
 ```
 
 ## Configuration
@@ -75,6 +81,11 @@ The following environment variables must be set in your `.env` file:
 
 #### Admin Configuration
 - `ADMIN_USERNAME`: Username with administrative privileges for managing highlights and other admin-only features
+
+#### Email Notifications
+- `EMAIL_NOTIFICATIONS_ENABLED`: Set to `true` to enable email notifications
+- `PROTONMAIL_USER`: Your ProtonMail email address
+- `PROTONMAIL_PASS`: Your ProtonMail password or app-specific password
 
 ### Stream Key
 
@@ -179,3 +190,14 @@ git push origin feature/your-feature-name
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Email Notifications
+
+The server includes an email notification system that alerts subscribers when the stream goes live. To use this feature:
+
+1. Set `EMAIL_NOTIFICATIONS_ENABLED=true` in your `.env` file
+2. Configure your ProtonMail credentials:
+   - `PROTONMAIL_USER`: Your ProtonMail email address
+   - `PROTONMAIL_PASS`: Your ProtonMail password or app-specific password
+3. Subscribers can sign up through the form on the website
+4. Notifications are automatically sent when the stream starts

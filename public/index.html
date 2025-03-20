@@ -804,6 +804,7 @@
     <script src="js/ui.js"></script>
     <script src="js/countdown.js"></script>
     <script src="js/quality.js"></script>
+    <script src="js/emailSubscription.js"></script>
     <script>
         // Update username displays when the page loads
         document.addEventListener('DOMContentLoaded', function() {
@@ -856,6 +857,19 @@
             }
         }
     </script>
+
+    <!-- Email Subscription Section -->
+    <div class="email-subscription">
+        <div class="email-subscription-content">
+            <h3>Get Notified When We Go Live!</h3>
+            <p>Subscribe to receive email notifications when the stream starts.</p>
+            <form class="email-form" id="emailSubscriptionForm">
+                <input type="email" class="email-input" id="emailInput" placeholder="Enter your email address" required>
+                <button type="submit" class="subscribe-btn" id="subscribeBtn">Subscribe</button>
+            </form>
+            <div class="subscription-message" id="subscriptionMessage"></div>
+        </div>
+    </div>
 
     <footer class="stream-footer">
         <div class="footer-content">
@@ -926,7 +940,7 @@
                     <label for="youtubeUrl">YouTube URL</label>
                     <div class="youtube-url-input">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73z"/>
+                            <path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8-.1 1.49-.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73z"/>
                         </svg>
                         <input type="url" id="youtubeUrl" placeholder="Or paste a YouTube video URL">
                     </div>
