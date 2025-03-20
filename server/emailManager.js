@@ -8,36 +8,41 @@ class EmailManager {
         this.isEnabled = process.env.EMAIL_NOTIFICATIONS_ENABLED === 'true';
         this.subscribers = this.loadSubscribers();
         
-        // Create email transporter
-        this.transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: parseInt(process.env.EMAIL_PORT || '587'),
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
+        // Only create transporter if email notifications are enabled
+        if (this.isEnabled) {
+            // Create email transporter
+            this.transporter = nodemailer.createTransport({
+                host: process.env.EMAIL_HOST,
+                port: parseInt(process.env.EMAIL_PORT || '587'),
+                secure: process.env.EMAIL_SECURE === 'true',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS,
+                },
+            });
 
-        // Verify connection configuration
-        this.transporter.verify((error, success) => {
-            if (error) {
-                console.log('SMTP connection error:', error);
-                console.log('Environment details:');
-                console.log('- Node version:', process.version);
-                console.log('- Platform:', process.platform);
-                console.log('- Email enabled:', this.isEnabled);
-                console.log('- SMTP Config:', {
-                    host: process.env.EMAIL_HOST,
-                    port: process.env.EMAIL_PORT,
-                    secure: process.env.EMAIL_SECURE,
-                    user: !!process.env.EMAIL_USER,
-                    pass: !!process.env.EMAIL_PASS
-                });
-            } else {
-                console.log('SMTP server is ready to take our messages');
-            }
-        });
+            // Verify connection configuration
+            this.transporter.verify((error, success) => {
+                if (error) {
+                    console.log('SMTP connection error:', error);
+                    console.log('Environment details:');
+                    console.log('- Node version:', process.version);
+                    console.log('- Platform:', process.platform);
+                    console.log('- Email enabled:', this.isEnabled);
+                    console.log('- SMTP Config:', {
+                        host: process.env.EMAIL_HOST,
+                        port: process.env.EMAIL_PORT,
+                        secure: process.env.EMAIL_SECURE,
+                        user: !!process.env.EMAIL_USER,
+                        pass: !!process.env.EMAIL_PASS
+                    });
+                } else {
+                    console.log('SMTP server is ready to take our messages');
+                }
+            });
+        } else {
+            console.log('Email notifications are disabled');
+        }
     }
 
     loadSubscribers() {
