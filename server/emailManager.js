@@ -12,8 +12,8 @@ class EmailManager {
         this.transporter = nodemailer.createTransport({
             service: 'gmail',
             host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
+            port: 587,
+            secure: false, // use STARTTLS
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS // This should be an App Password, not your regular Gmail password
@@ -21,15 +21,23 @@ class EmailManager {
             tls: {
                 rejectUnauthorized: true
             },
-            connectionTimeout: 10000, // 10 seconds
-            greetingTimeout: 10000,
-            socketTimeout: 10000
+            debug: true, // Enable debug logging
+            logger: true, // Log to console
+            connectionTimeout: 30000, // 30 seconds
+            greetingTimeout: 30000,
+            socketTimeout: 30000
         });
 
         // Verify connection configuration
-        this.transporter.verify(function(error, success) {
+        this.transporter.verify((error, success) => {
             if (error) {
                 console.log('SMTP connection error:', error);
+                console.log('Environment details:');
+                console.log('- Node version:', process.version);
+                console.log('- Platform:', process.platform);
+                console.log('- Email enabled:', this.isEnabled);
+                console.log('- Email user configured:', !!process.env.EMAIL_USER);
+                console.log('- Email password configured:', !!process.env.EMAIL_PASS);
             } else {
                 console.log('SMTP server is ready to take our messages');
             }
