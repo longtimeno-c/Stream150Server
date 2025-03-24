@@ -1,16 +1,36 @@
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const fs = require('fs');
 const path = require('path');
 
 class EmailManager {
     constructor() {
         this.subscribersFile = path.join(__dirname, '..', 'data', 'subscribers.json');
-        this.isEnabled = process.env.EMAIL_NOTIFICATIONS_ENABLED === 'true';
+        this.isEnabled = process.env.EMAIL_SYSTEM_ENABLED === 'true';
+        this.emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
         this.subscribers = this.loadSubscribers();
         
-        // Only create transporter if email notifications are enabled
+        // Initialize email provider
         if (this.isEnabled) {
-            // Create email transporter
+            this.initializeEmailProvider();
+        } else {
+            console.log('Email system is disabled');
+        }
+    }
+
+    initializeEmailProvider() {
+        if (this.emailProvider === 'smtp') {
+            this.initializeSMTP();
+        } else if (this.emailProvider === 'resend') {
+            this.initializeResend();
+        } else {
+            console.error('Invalid email provider specified');
+            this.isEnabled = false;
+        }
+    }
+
+    initializeSMTP() {
+        try {
             this.transporter = nodemailer.createTransport({
                 host: process.env.EMAIL_HOST,
                 port: parseInt(process.env.EMAIL_PORT || '587'),
@@ -40,8 +60,19 @@ class EmailManager {
                     console.log('SMTP server is ready to take our messages');
                 }
             });
-        } else {
-            console.log('Email notifications are disabled');
+        } catch (error) {
+            console.error('Failed to initialize SMTP:', error);
+            this.isEnabled = false;
+        }
+    }
+
+    initializeResend() {
+        try {
+            this.resend = new Resend(process.env.RESEND_API);
+            console.log('Resend client initialized');
+        } catch (error) {
+            console.error('Failed to initialize Resend:', error);
+            this.isEnabled = false;
         }
     }
 
@@ -105,102 +136,121 @@ class EmailManager {
 
         try {
             for (const subscriber of this.subscribers) {
-                // Create a unique unsubscribe link for each subscriber
                 const unsubscribeLink = `http://watch.stream150.com/api/unsubscribe?email=${encodeURIComponent(subscriber)}`;
                 
-                const mailOptions = {
-                    from: process.env.EMAIL_USER,
-                    to: subscriber,
-                    subject: '🎥 Stream150 is LIVE NOW! 🔴',
-                    html: `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <style>
-                            body {
-                                font-family: Arial, sans-serif;
-                                line-height: 1.6;
-                                color: #333;
-                            }
-                            .container {
-                                max-width: 600px;
-                                margin: 0 auto;
-                                padding: 20px;
-                                background-color: #f9f9f9;
-                                border-radius: 10px;
-                            }
-                            .header {
-                                text-align: center;
-                                padding: 20px 0;
-                                background-color: #6441a5;
-                                color: white;
-                                border-radius: 8px 8px 0 0;
-                                margin-bottom: 20px;
-                            }
-                            .content {
-                                padding: 20px;
-                                background-color: white;
-                                border-radius: 8px;
-                                margin-bottom: 20px;
-                            }
-                            .button {
-                                display: inline-block;
-                                padding: 12px 24px;
-                                background-color: #6441a5;
-                                color: white;
-                                text-decoration: none;
-                                border-radius: 5px;
-                                margin: 20px 0;
-                            }
-                            .footer {
-                                text-align: center;
-                                font-size: 12px;
-                                color: #666;
-                                padding-top: 20px;
-                                border-top: 1px solid #eee;
-                            }
-                            .emoji {
-                                font-size: 24px;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="header">
-                                <h1>🎮 Stream150 is LIVE! 🎥</h1>
-                            </div>
-                            <div class="content">
-                                <p>Hey Stream Fan! 👋</p>
-                                <p>Great news! The stream you've been waiting for is now LIVE! 🔴</p>
-                                <p>Join us for an exciting streaming session with:</p>
-                                <ul>
-                                    <li>🎯 Amazing gameplay moments</li>
-                                    <li>💬 Live chat interaction</li>
-                                    <li>🎉 Real-time entertainment</li>
-                                </ul>
-                                <center>
-                                    <a href="http://watch.stream150.com" class="button">
-                                        🎥 Watch Stream Now!
-                                    </a>
-                                </center>
-                                <p>Don't miss out on the action! Click the button above to join the stream.</p>
-                            </div>
-                            <div class="footer">
-                                <p>You're receiving this because you subscribed to Stream150 notifications.</p>
-                                <p>To unsubscribe from these notifications, <a href="${unsubscribeLink}">click here</a>.</p>
-                            </div>
+                const emailContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.6;
+                            color: #333;
+                        }
+                        .container {
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 20px;
+                            background-color: #f9f9f9;
+                            border-radius: 10px;
+                        }
+                        .header {
+                            text-align: center;
+                            padding: 20px 0;
+                            background-color: #6441a5;
+                            color: white;
+                            border-radius: 8px 8px 0 0;
+                            margin-bottom: 20px;
+                        }
+                        .content {
+                            padding: 20px;
+                            background-color: white;
+                            border-radius: 8px;
+                            margin-bottom: 20px;
+                        }
+                        .button {
+                            display: inline-block;
+                            padding: 12px 24px;
+                            background-color: #6441a5;
+                            color: white;
+                            text-decoration: none;
+                            border-radius: 5px;
+                            margin: 20px 0;
+                        }
+                        .footer {
+                            text-align: center;
+                            font-size: 12px;
+                            color: #666;
+                            padding-top: 20px;
+                            border-top: 1px solid #eee;
+                        }
+                        .emoji {
+                            font-size: 24px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🎮 Stream150 is LIVE! 🎥</h1>
                         </div>
-                    </body>
-                    </html>
-                    `
-                };
+                        <div class="content">
+                            <p>Hey Stream Fan! 👋</p>
+                            <p>Great news! The stream you've been waiting for is now LIVE! 🔴</p>
+                            <p>Join us for an exciting streaming session with:</p>
+                            <ul>
+                                <li>🎯 Amazing gameplay moments</li>
+                                <li>💬 Live chat interaction</li>
+                                <li>🎉 Real-time entertainment</li>
+                            </ul>
+                            <center>
+                                <a href="http://watch.stream150.com" class="button">
+                                    🎥 Watch Stream Now!
+                                </a>
+                            </center>
+                            <p>Don't miss out on the action! Click the button above to join the stream.</p>
+                        </div>
+                        <div class="footer">
+                            <p>You're receiving this because you subscribed to Stream150 notifications.</p>
+                            <p>To unsubscribe from these notifications, <a href="${unsubscribeLink}">click here</a>.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                `;
 
-                await this.transporter.sendMail(mailOptions);
-                console.log(`Stream notification sent to ${subscriber}`);
+                if (this.emailProvider === 'smtp') {
+                    await this.sendSMTPEmail(subscriber, emailContent);
+                } else if (this.emailProvider === 'resend') {
+                    await this.sendResendEmail(subscriber, emailContent);
+                }
+                
+                console.log(`Stream notification sent to ${subscriber} using ${this.emailProvider}`);
             }
         } catch (error) {
             console.error('Error sending stream notification:', error);
         }
+    }
+
+    async sendSMTPEmail(recipient, htmlContent) {
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: recipient,
+            subject: '🎥 Stream150 is LIVE NOW! 🔴',
+            html: htmlContent
+        };
+
+        await this.transporter.sendMail(mailOptions);
+    }
+
+    async sendResendEmail(recipient, htmlContent) {
+        await this.resend.emails.send({
+            from: process.env.EMAIL_FROM,
+            to: recipient,
+            subject: '🎥 Stream150 is LIVE NOW! 🔴',
+            html: htmlContent
+        });
     }
 
     setEnabled(enabled) {
