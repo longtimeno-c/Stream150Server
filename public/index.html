@@ -100,6 +100,11 @@
                             <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
                         </svg>
                     </button>
+                    <button class="pip-btn" onclick="togglePiP()" title="Picture in Picture">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
@@ -777,6 +782,44 @@
             }
         }
         
+        // Function to toggle Picture-in-Picture
+        async function togglePiP() {
+            const video = document.getElementById('videoPlayer');
+            const pipBtn = document.querySelector('.pip-btn');
+            
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                    pipBtn.classList.remove('active');
+                } else {
+                    if (!video.paused) {
+                        await video.requestPictureInPicture();
+                        pipBtn.classList.add('active');
+                    } else {
+                        alert('Please play the video first to use Picture-in-Picture');
+                    }
+                }
+            } catch (error) {
+                console.error('Picture-in-Picture error:', error);
+                alert('Picture-in-Picture is not supported in your browser');
+            }
+        }
+
+        // Add event listener for PiP changes
+        document.addEventListener('enterpictureinpicture', () => {
+            const pipBtn = document.querySelector('.pip-btn');
+            if (pipBtn) {
+                pipBtn.classList.add('active');
+            }
+        });
+
+        document.addEventListener('leavepictureinpicture', () => {
+            const pipBtn = document.querySelector('.pip-btn');
+            if (pipBtn) {
+                pipBtn.classList.remove('active');
+            }
+        });
+        
         // Function to update volume button state
         function updateVolumeButtonState() {
             const video = document.getElementById('videoPlayer');
@@ -944,6 +987,38 @@
             </form>
         </div>
     </div>
+
+    <style>
+        /* Add these styles to your existing CSS */
+        .pip-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            color: #fff;
+            transition: color 0.3s ease;
+        }
+
+        .pip-btn:hover {
+            color: #00ff00;
+        }
+
+        .pip-btn.active {
+            color: #00ff00;
+        }
+
+        .pip-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Hide PiP button on mobile devices */
+        @media (max-width: 768px) {
+            .pip-btn {
+                display: none;
+            }
+        }
+    </style>
 </body>
 
 </html>
