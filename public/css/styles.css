@@ -2444,3 +2444,49 @@ body {
         font-size: 1.6rem;
     }
 }
+
+.donation-buttons {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    justify-content: center;
+}
+
+.donation-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.donation-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: translateY(-2px);
+}
+
+.donation-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.donation-btn.tangia {
+    background: #FF6B00;
+}
+
+.donation-btn.tangia:hover {
+    background: #E65F00;
+}
+
+.donation-btn.paypal {
+    background: #0070BA;
+}
+
+.donation-btn.paypal:hover {
+    background: #005EA6;
+}
