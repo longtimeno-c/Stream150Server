@@ -284,28 +284,32 @@ body {
 }
 
 .pip-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-    color: #fff;
-    transition: color 0.3s ease;
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    color: white;
 }
 
 .pip-btn:hover {
-    color: #00ff00;
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
 }
 
 .pip-btn.active {
-    color: #00ff00;
+    background: rgba(0, 255, 0, 0.2);
 }
 
 .pip-btn svg {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
 }
 
 /* Hide PiP button on mobile devices */
@@ -313,54 +317,6 @@ body {
     .pip-btn {
         display: none;
     }
-}
-
-.donation-buttons {
-    display: flex;
-    gap: 10px;
-    padding: 15px;
-    justify-content: center;
-}
-
-.donation-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border-radius: 6px;
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-    transition: all 0.2s ease;
-    min-width: 120px;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.donation-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.donation-btn svg {
-    width: 20px;
-    height: 20px;
-}
-
-.donation-btn.tangia {
-    background-color: #ff6b00;
-}
-
-.donation-btn.tangia:hover {
-    background-color: #ff7d1a;
-}
-
-.donation-btn.paypal {
-    background-color: #0070ba;
-}
-
-.donation-btn.paypal:hover {
-    background-color: #005ea6;
 }
 
 /* Mobile styles for donation buttons */
@@ -1021,12 +977,12 @@ body {
     }
     
     /* Slightly larger buttons for better touch targets on iPad */
-    .fullscreen-btn, .volume-btn {
+    .fullscreen-btn, .volume-btn, .pip-btn {
         width: 44px;
         height: 44px;
     }
     
-    .fullscreen-btn svg, .volume-btn svg {
+    .fullscreen-btn svg, .volume-btn svg, .pip-btn svg {
         width: 22px;
         height: 22px;
     }
