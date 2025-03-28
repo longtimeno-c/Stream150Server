@@ -280,7 +280,39 @@ body {
 }
 
 .volume-btn.muted .volume-off {
-    display: block !important;
+    display: block;
+}
+
+.pip-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #fff;
+    transition: color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pip-btn:hover {
+    color: #00ff00;
+}
+
+.pip-btn.active {
+    color: #00ff00;
+}
+
+.pip-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Hide PiP button on mobile devices */
+@media (max-width: 768px) {
+    .pip-btn {
+        display: none;
+    }
 }
 
 .donation-buttons {
