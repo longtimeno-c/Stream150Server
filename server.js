@@ -309,7 +309,17 @@ app.post('/api/subscribe', async (req, res) => {
 
 app.post('/api/unsubscribe', async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, token } = req.body;
+        
+        if (!email || !token) {
+            return res.status(400).json({ message: 'Email and token are required' });
+        }
+
+        // Verify the unsubscribe token
+        if (!EmailManager.verifyUnsubscribeToken(email, token)) {
+            return res.status(403).json({ message: 'Invalid or expired unsubscribe token' });
+        }
+
         const result = await EmailManager.removeSubscriber(email);
         if (result) {
             res.status(200).json({ message: 'Successfully unsubscribed from notifications' });

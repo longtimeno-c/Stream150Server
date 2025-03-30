@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 class EmailManager {
     constructor() {
@@ -9,6 +10,7 @@ class EmailManager {
         this.isEnabled = process.env.EMAIL_SYSTEM_ENABLED === 'true';
         this.emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
         this.subscribers = this.loadSubscribers();
+        this.tokenStore = new Map(); // Store tokens with their creation timestamps
         
         // Initialize email provider
         if (this.isEnabled) {
@@ -129,14 +131,72 @@ class EmailManager {
         return emailRegex.test(email);
     }
 
+    generateUnsubscribeToken(email) {
+        const timestamp = Date.now();
+        const randomBytes = crypto.randomBytes(16).toString('hex');
+        const data = `${email}:${timestamp}:${randomBytes}:${process.env.EMAIL_SECRET || 'default-secret'}`;
+        const token = crypto.createHash('sha256').update(data).digest('hex');
+        
+        // Store the token with its timestamp
+        this.tokenStore.set(token, {
+            email,
+            timestamp
+        });
+
+        return token;
+    }
+
+    verifyUnsubscribeToken(email, token) {
+        const tokenData = this.tokenStore.get(token);
+        if (!tokenData) {
+            return false;
+        }
+
+        // Check if token matches the email
+        if (tokenData.email !== email) {
+            return false;
+        }
+
+        // Check if token is not older than 7 days
+        const now = Date.now();
+        const tokenAge = now - tokenData.timestamp;
+        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+
+        if (tokenAge > SEVEN_DAYS) {
+            // Clean up expired token
+            this.tokenStore.delete(token);
+            return false;
+        }
+
+        // Clean up used token
+        this.tokenStore.delete(token);
+        return true;
+    }
+
+    // Clean up expired tokens periodically
+    cleanupExpiredTokens() {
+        const now = Date.now();
+        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+
+        for (const [token, data] of this.tokenStore.entries()) {
+            if (now - data.timestamp > SEVEN_DAYS) {
+                this.tokenStore.delete(token);
+            }
+        }
+    }
+
     async sendStreamNotification() {
         if (!this.isEnabled || this.subscribers.length === 0) {
             return;
         }
 
+        // Clean up expired tokens before sending new notifications
+        this.cleanupExpiredTokens();
+
         try {
             for (const subscriber of this.subscribers) {
-                const unsubscribeLink = `http://watch.stream150.com/api/unsubscribe?email=${encodeURIComponent(subscriber)}`;
+                const unsubscribeToken = this.generateUnsubscribeToken(subscriber);
+                const unsubscribeLink = `https://watch.stream150.com/unsubscribe.html?email=${encodeURIComponent(subscriber)}&token=${unsubscribeToken}`;
                 
                 const emailContent = `
                 <!DOCTYPE html>
@@ -173,7 +233,7 @@ class EmailManager {
                             display: inline-block;
                             padding: 12px 24px;
                             background-color: #6441a5;
-                            color: white;
+                            color: white !important;
                             text-decoration: none;
                             border-radius: 5px;
                             margin: 20px 0;
@@ -187,6 +247,13 @@ class EmailManager {
                         }
                         .emoji {
                             font-size: 24px;
+                        }
+                        a {
+                            color: #6441a5;
+                            text-decoration: none;
+                        }
+                        a:hover {
+                            text-decoration: underline;
                         }
                     </style>
                 </head>
@@ -205,7 +272,7 @@ class EmailManager {
                                 <li>🎉 Real-time entertainment</li>
                             </ul>
                             <center>
-                                <a href="http://watch.stream150.com" class="button">
+                                <a href="https://watch.stream150.com" class="button">
                                     🎥 Watch Stream Now!
                                 </a>
                             </center>
