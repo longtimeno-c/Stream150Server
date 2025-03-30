@@ -307,8 +307,8 @@
             
             // Configure stream URL
             const hlsUrl = isProduction 
-                ? '/live/StreamtoME/index.m3u8'
-                : `${protocol}://localhost:8000/live/StreamtoME/index.m3u8`;
+                ? '/live/index.m3u8'
+                : `${protocol}://localhost:8000/live/index.m3u8`;
             
             window.WS_URL = isProduction
                 ? `${wsProtocol}://${host}/ws`

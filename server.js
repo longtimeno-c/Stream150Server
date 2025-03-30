@@ -179,10 +179,9 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // Proxy HLS requests to the media server
-app.get('/live/:stream/:file', (req, res) => {
-    const stream = req.params.stream;
+app.get('/live/:file', (req, res) => {
     const file = req.params.file;
-    const hlsUrl = `http://localhost:8000/live/${stream}/${file}`;
+    const hlsUrl = `http://localhost:8000/live/${file}`;
     
     console.log(`📡 Proxying HLS request to: ${hlsUrl}`);
     
@@ -224,8 +223,7 @@ app.get('/live/:stream/:file', (req, res) => {
 });
 
 // Add a catch-all route for HLS segments that might have different patterns
-app.get('/live/:stream/*', (req, res) => {
-    const stream = req.params.stream;
+app.get('/live/*', (req, res) => {
     const pathParts = req.path.split('/');
     const file = pathParts[pathParts.length - 1];
     const hlsUrl = `http://localhost:8000${req.path}`;
@@ -260,9 +258,9 @@ app.get('/live/:stream/*', (req, res) => {
     });
 });
 
-// Add this route to check if the HLS stream exists
+// Update the check-stream route
 app.get('/check-stream', (req, res) => {
-    const hlsUrl = `http://localhost:8000/live/StreamtoME/index.m3u8`;
+    const hlsUrl = `http://localhost:8000/live/index.m3u8`;
     
     console.log(`🔍 Checking if HLS stream exists at: ${hlsUrl}`);
     
@@ -606,11 +604,31 @@ process.on('SIGINT', () => {
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    console.error('❌ Uncaught Exception:', err.message);
+    
+    // Handle stream-related errors gracefully
+    if (err.message.includes('Stream key')) {
+        console.log('Stream authentication failed, updating status...');
+        isStreaming = false;
+        broadcast({ 
+            type: 'STREAM_STATUS', 
+            status: 'OFFLINE',
+            error: 'Stream authentication failed',
+            viewers: viewerCount 
+        });
+        
+        // Save chat history but don't exit
+        saveChatHistory();
+        return;
+    }
+    
+    // For non-stream errors, log, save chat, and exit
+    console.error('Critical error:', err);
     saveChatHistory();
+    process.exit(1);
 });
 
-// Update the config to remove HTTPS
+// Update the config to use a simpler path structure
 const config = {
     rtmp: {
         port: 1935,
@@ -625,7 +643,7 @@ const config = {
         mediaroot: './media'
     },
     trans: {
-        ffmpeg: '/usr/bin/ffmpeg',  // Explicit path to ffmpeg on Ubuntu
+        ffmpeg: '/usr/bin/ffmpeg',
         tasks: [
             {
                 app: 'live',
@@ -633,6 +651,8 @@ const config = {
                 hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
                 hlsKeep: false,
                 dash: false,
+                // Configure output path without stream key
+                outPath: '{mediaroot}/live',
             }
         ]
     }
@@ -666,11 +686,47 @@ nms.on('prePublish', (id, StreamPath, args) => {
         path: StreamPath,
         args: args
     });
-    let stream_key = StreamPath.split('/')[2];
-
+    
+    // Extract stream key from multiple possible sources
+    let stream_key;
+    
+    // 1. Try query parameters (new method)
+    if (args.query && args.query.key) {
+        stream_key = args.query.key;
+        console.log('🔑 Found stream key in query parameters');
+    }
+    // 2. Try StreamPath (legacy method)
+    else if (StreamPath) {
+        // First check for query string in path
+        const parts = StreamPath.split('?');
+        if (parts.length > 1) {
+            const params = new URLSearchParams(parts[1]);
+            stream_key = params.get('key');
+            console.log('🔑 Found stream key in StreamPath query');
+        }
+        // Then check for legacy format (/live/KEY)
+        else {
+            const pathParts = StreamPath.split('/');
+            if (pathParts.length > 2) {
+                stream_key = pathParts[2]; // /live/KEY format
+                console.log('🔑 Found stream key in legacy path format');
+            }
+        }
+    }
+    
+    console.log('🔑 Validating stream key...');
+    
+    if (!stream_key) {
+        const message = 'Stream key required. Use either:\n' +
+                       '- New format: rtmp://server:1935/live?key=YOUR_STREAM_KEY\n' +
+                       '- Legacy format: rtmp://server:1935/live/YOUR_STREAM_KEY';
+        console.error('❌ No stream key provided');
+        throw new Error(message);
+    }
+    
     if (stream_key === STREAM_KEY) {
         console.log('✅ [RTMP] Stream key validated');
-        console.log('📡 [HLS] HLS stream should be available at:', `http://localhost:8000/live/${stream_key}/index.m3u8`);
+        console.log('📡 [HLS] HLS stream should be available at:', `http://localhost:8000/live/index.m3u8`);
         isStreaming = true;
         broadcast({ 
             type: 'STREAM_STATUS', 
@@ -680,6 +736,7 @@ nms.on('prePublish', (id, StreamPath, args) => {
         return;
     }
 
+    console.error('❌ Invalid stream key provided');
     throw new Error('Invalid stream key');
 });
 
@@ -705,16 +762,16 @@ nms.on('postHLSSegment', (id, level, sn, duration, start, end) => {
         duration,
         start,
         end,
-        path: `live/StreamtoME/${sn}.ts`
+        path: `live/${sn}.ts`
     });
 });
 
 // Add this after nms.run()
 console.log('📂 Media root directory:', path.resolve(config.http.mediaroot));
-console.log('📂 Expected HLS path:', path.resolve(config.http.mediaroot, 'live', STREAM_KEY));
+console.log('📂 Expected HLS path:', path.resolve(config.http.mediaroot, 'live'));
 
-// Check if the directory exists
-const hlsDir = path.resolve(config.http.mediaroot, 'live', STREAM_KEY);
+// Update the HLS directory check
+const hlsDir = path.resolve(config.http.mediaroot, 'live');
 fs.access(hlsDir, fs.constants.F_OK, (err) => {
     if (err) {
         console.log('⚠️ HLS directory does not exist yet:', hlsDir);
@@ -738,4 +795,16 @@ server.listen(3001, () => {
     console.log(`- Web: ${protocol}://${host}:3001`);
     console.log(`- RTMP: rtmp://${host}:1935/live`);
     console.log(`- HLS: ${protocol}://${host}:${isProduction ? '8443' : '8000'}/live`);
+});
+
+// Add error event handler for the RTMP server
+nms.on('error', (err) => {
+    console.error('🚨 RTMP Server Error:', err);
+    // Don't crash the server, just log the error
+    broadcast({ 
+        type: 'STREAM_STATUS', 
+        status: 'ERROR',
+        error: 'Stream server encountered an error',
+        viewers: viewerCount 
+    });
 });

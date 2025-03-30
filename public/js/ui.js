@@ -65,8 +65,8 @@ function getStreamUrls(useLocalhost = false) {
     const protocol = window.location.protocol;
     // Use same protocol as the page
     return {
-        hls: `${protocol}//${host}/live/StreamtoME/index.m3u8`,
-        flv: `${protocol}//${host}/live/StreamtoME.flv`
+        hls: `${protocol}//${host}/live/index.m3u8`,
+        flv: `${protocol}//${host}/live/stream.flv`
     };
 }
 
