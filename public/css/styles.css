@@ -280,55 +280,43 @@ body {
 }
 
 .volume-btn.muted .volume-off {
-    display: block !important;
+    display: block;
 }
 
-.donation-buttons {
-    display: flex;
-    gap: 10px;
-    padding: 15px;
-    justify-content: center;
-}
-
-.donation-btn {
+.pip-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    padding: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border-radius: 6px;
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-    transition: all 0.2s ease;
-    min-width: 120px;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    color: white;
 }
 
-.donation-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+.pip-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
 }
 
-.donation-btn svg {
+.pip-btn.active {
+    background: rgba(0, 255, 0, 0.2);
+}
+
+.pip-btn svg {
     width: 20px;
     height: 20px;
 }
 
-.donation-btn.tangia {
-    background-color: #ff6b00;
-}
-
-.donation-btn.tangia:hover {
-    background-color: #ff7d1a;
-}
-
-.donation-btn.paypal {
-    background-color: #0070ba;
-}
-
-.donation-btn.paypal:hover {
-    background-color: #005ea6;
+/* Hide PiP button on mobile devices */
+@media (max-width: 768px) {
+    .pip-btn {
+        display: none;
+    }
 }
 
 /* Mobile styles for donation buttons */
@@ -989,12 +977,12 @@ body {
     }
     
     /* Slightly larger buttons for better touch targets on iPad */
-    .fullscreen-btn, .volume-btn {
+    .fullscreen-btn, .volume-btn, .pip-btn {
         width: 44px;
         height: 44px;
     }
     
-    .fullscreen-btn svg, .volume-btn svg {
+    .fullscreen-btn svg, .volume-btn svg, .pip-btn svg {
         width: 22px;
         height: 22px;
     }
@@ -2455,6 +2443,54 @@ body {
         padding: 8px 10px;
         font-size: 1.6rem;
     }
+}
+
+.donation-buttons {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    justify-content: center;
+}
+
+.donation-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    min-width: 120px;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.donation-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.donation-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.donation-btn.tangia {
+    background-color: #ff6b00;
+}
+
+.donation-btn.tangia:hover {
+    background-color: #ff7d1a;
+}
+
+.donation-btn.paypal {
+    background-color: #0070ba;
+}
+
+.donation-btn.paypal:hover {
+    background-color: #005ea6;
 }
 
 /* Email Subscription Form */
