@@ -15,7 +15,7 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    .event-card.category-irl {
+    .event-card.category-irl-activity {
       background: linear-gradient(145deg, rgba(45, 212, 191, 0.2), rgba(31, 41, 55, 0.9));
       border-left: 6px solid #2dd4bf; /* Teal for IRL Activity */
     }
@@ -115,7 +115,8 @@
       const startTime = new Date(event.start);
       const endTime = new Date(event.end);
       const div = document.createElement('div');
-      const categoryClass = event.category ? `category-${event.category.toLowerCase().replace(' ', '-')}` : '';
+      const categoryClass = event.category ? `category-${event.category.toLowerCase().replace(/\s+/g, '-')}` : '';
+      console.log(`Event: ${event.title}, Category: ${event.category}, Applied Class: ${categoryClass}`); // Debugging
       div.className = `event-card p-4 ${isPast ? 'past-event' : ''} ${isCurrent ? 'current-event' : ''} ${isNext ? 'next-event' : ''} ${categoryClass}`;
 
       let liveBarHTML = '';
