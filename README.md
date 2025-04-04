@@ -83,9 +83,19 @@ The following environment variables must be set in your `.env` file:
 - `ADMIN_USERNAME`: Username with administrative privileges for managing highlights and other admin-only features
 
 #### Email Notifications
+- `EMAIL_SYSTEM_ENABLED`: Set to `true` to enable the email system
 - `EMAIL_NOTIFICATIONS_ENABLED`: Set to `true` to enable email notifications
-- `PROTONMAIL_USER`: Your ProtonMail email address
-- `PROTONMAIL_PASS`: Your ProtonMail password or app-specific password
+- `EMAIL_PROVIDER`: Set as email provider (smtp/resend)
+- `EMAIL_FROM`: Who the email is from
+- `RESEND_API`: Set resend API
+
+#### SMTP Configuration (if using SMTP provider)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+`EMAIL_USER`: Set gmail email
+`EMAIL_PASS`: Set gmail special key
+
 
 ### Stream Key
 
