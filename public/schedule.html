@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stream 150 Schedule</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    }
+    .event-card {
+      transition: all 0.3s ease;
+      background: linear-gradient(145deg, rgba(55, 65, 81, 0.8), rgba(31, 41, 55, 0.9));
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .event-card.category-irl {
+      background: linear-gradient(145deg, rgba(45, 212, 191, 0.2), rgba(31, 41, 55, 0.9));
+      border-left: 6px solid #2dd4bf; /* Teal for IRL Activity */
+    }
+    .event-card.category-game {
+      background: linear-gradient(145deg, rgba(34, 197, 94, 0.2), rgba(31, 41, 55, 0.9));
+      border-left: 6px solid #22c55e; /* Green for Game */
+    }
+    .event-card.category-meal {
+      background: linear-gradient(145deg, rgba(249, 115, 22, 0.2), rgba(31, 41, 55, 0.9));
+      border-left: 6px solid #f97316; /* Orange for Meal */
+    }
+    .event-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    .past-event {
+      opacity: 0.6;
+      filter: grayscale(50%);
+    }
+    .current-event {
+      border-left-width: 6px;
+      border-color: #ef4444;
+      background: linear-gradient(145deg, rgba(239, 68, 68, 0.2), rgba(55, 65, 81, 0.9));
+    }
+    .next-event {
+      border-left-width: 6px;
+      border-color: #f59e0b;
+      background: linear-gradient(145deg, rgba(245, 158, 11, 0.2), rgba(55, 65, 81, 0.9));
+    }
+    .live-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: white;
+    }
+    .live-bar.live {
+      background: #ef4444; /* Red for "LIVE NOW" and between events */
+    }
+    .live-bar.next {
+      background: #f59e0b; /* Amber for "NEXT UP" */
+    }
+    .live-bar.between {
+      margin: 1rem 0;
+      width: fit-content;
+    }
+    .timeline-container {
+      height: calc(100vh - 100px);
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+    .day-header {
+      background: linear-gradient(to right, #374151, #1f2937);
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #d1d5db;
+      text-align: center;
+      margin: 1rem 0;
+      border-radius: 6px;
+    }
+    .description {
+      display: none;
+      margin-top: 8px;
+      color: #9ca3af;
+    }
+    .description.active {
+      display: block;
+    }
+  </style>
+</head>
+<body class="text-white font-sans">
+  <div class="max-w-3xl mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-6 text-center">📅 Stream 150 Schedule</h1>
+    <div id="timeline" class="timeline-container space-y-2"></div>
+  </div>
+
+  <script>
+    let events = [];
+
+    function formatDate(date) {
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function createEventElement(event, isPast, isCurrent, isNext) {
+      const startTime = new Date(event.start);
+      const endTime = new Date(event.end);
+      const div = document.createElement('div');
+      const categoryClass = event.category ? `category-${event.category.toLowerCase().replace(' ', '-')}` : '';
+      div.className = `event-card p-4 ${isPast ? 'past-event' : ''} ${isCurrent ? 'current-event' : ''} ${isNext ? 'next-event' : ''} ${categoryClass}`;
+
+      let liveBarHTML = '';
+      if (isCurrent) {
+        liveBarHTML = `
+          <div class="live-bar live">
+            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span>LIVE NOW</span>
+          </div>`;
+      } else if (isNext) {
+        liveBarHTML = `
+          <div class="live-bar next">
+            <div class="w-2 h-2 bg-white rounded-full"></div>
+            <span>NEXT UP</span>
+          </div>`;
+      }
+
+      div.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-lg font-semibold">${formatTime(startTime)} – ${formatTime(endTime)}: ${event.title}</h2>
+            <p class="description">${event.description}</p>
+          </div>
+          ${liveBarHTML}
+        </div>
+      `;
+
+      div.addEventListener('click', () => {
+        const desc = div.querySelector('.description');
+        desc.classList.toggle('active');
+      });
+
+      return div;
+    }
+
+    function groupEventsByDay(events) {
+      const grouped = {};
+      events.forEach(event => {
+        const date = new Date(event.start).toDateString();
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(event);
+      });
+      return grouped;
+    }
+
+    function renderTimeline() {
+      const now = new Date();
+      const container = document.getElementById('timeline');
+      container.innerHTML = '';
+      const groupedEvents = groupEventsByDay(events);
+
+      let hasCurrentEvent = false;
+      let nextEvent = null;
+
+      // Find current and next events
+      events.forEach(event => {
+        const startTime = new Date(event.start);
+        const endTime = new Date(event.end);
+        if (startTime <= now && endTime >= now) {
+          hasCurrentEvent = true;
+        } else if (startTime > now && (!nextEvent || startTime < new Date(nextEvent.start))) {
+          nextEvent = event;
+        }
+      });
+
+      Object.entries(groupedEvents).forEach(([date, dayEvents]) => {
+        const header = document.createElement('div');
+        header.className = 'day-header';
+        header.textContent = formatDate(new Date(date));
+        container.appendChild(header);
+
+        const eventsContainer = document.createElement('div');
+        eventsContainer.className = 'space-y-4';
+
+        dayEvents.forEach(event => {
+          const startTime = new Date(event.start);
+          const endTime = new Date(event.end);
+          const isPast = endTime < now;
+          const isCurrent = startTime <= now && endTime >= now;
+          const isNext = event === nextEvent && !hasCurrentEvent;
+
+          // Add "LIVE" bar before the next event if no event is current
+          if (isNext && !hasCurrentEvent) {
+            const betweenBar = document.createElement('div');
+            betweenBar.className = 'live-bar live between';
+            betweenBar.innerHTML = `
+              <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <span>LIVE</span>
+            `;
+            eventsContainer.appendChild(betweenBar);
+          }
+
+          if (isCurrent || isNext) {
+            setTimeout(() => eventsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+          }
+
+          eventsContainer.appendChild(createEventElement(event, isPast, isCurrent, isNext));
+        });
+
+        container.appendChild(eventsContainer);
+      });
+    }
+
+    async function loadSchedule() {
+    try {
+      const res = await fetch('/data/schedule.json');
+      events = await res.json();
+      events.sort((a, b) => new Date(a.date) - new Date(b.date));
+      renderTimeline();
+      setInterval(renderTimeline, 30000); // Update every 30s
+    } catch (err) {
+      document.getElementById('timeline').innerHTML = '<p class="text-red-500">Failed to load schedule.</p>';
+      console.error(err);
+    }
+  }
+
+    loadSchedule();
+  </script>
+</body>
+</html>
+
+<!-- async function loadSchedule() {
+    try {
+      const res = await fetch('/data/schedule.json');
+      events = await res.json();
+      events.sort((a, b) => new Date(a.date) - new Date(b.date));
+      renderTimeline();
+      setInterval(renderTimeline, 30000); // Update every 30s
+    } catch (err) {
+      document.getElementById('timeline').innerHTML = '<p class="text-red-500">Failed to load schedule.</p>';
+      console.error(err);
+    }
+  } -->
