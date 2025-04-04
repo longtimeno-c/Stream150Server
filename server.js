@@ -344,6 +344,17 @@ app.use((req, res) => {
 // WebSocket connection handling
 wss.on('connection', (ws) => {
     console.log('New WebSocket client connected');
+    
+    // Add custom properties to track connection state
+    ws.isAlive = true;
+    ws.connectionTime = Date.now();
+    
+    // Handle pings to detect stale connections
+    ws.on('pong', () => {
+        ws.isAlive = true;
+    });
+    
+    // Increment viewer count and broadcast
     viewerCount++;
     
     // Send initial stream status and viewer count
@@ -587,14 +598,35 @@ wss.on('connection', (ws) => {
     // Handle disconnection
     ws.on('close', () => {
         console.log('WebSocket client disconnected');
-        viewerCount = Math.max(0, viewerCount - 1);
-        
-        // Broadcast updated viewer count
-        broadcast({
-            type: 'VIEWER_COUNT',
-            viewers: viewerCount
-        });
+        // Only decrement if the connection was alive
+        if (ws.isAlive) {
+            viewerCount = Math.max(0, viewerCount - 1);
+            // Broadcast updated viewer count
+            broadcast({
+                type: 'VIEWER_COUNT',
+                viewers: viewerCount
+            });
+        }
     });
+});
+
+// Set up ping interval to detect stale connections
+const pingInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (!ws.isAlive) {
+            console.log('Terminating stale connection');
+            viewerCount = Math.max(0, viewerCount - 1);
+            return ws.terminate();
+        }
+        
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 30000);
+
+// Clean up interval on server shutdown
+wss.on('close', () => {
+    clearInterval(pingInterval);
 });
 
 // Helper function to broadcast to all connected clients
