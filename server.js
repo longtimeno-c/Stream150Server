@@ -8,6 +8,7 @@ const fs = require('fs');
 const NodeMediaServer = require('node-media-server');
 const EventEmitter = require('events');
 const PollManager = require('./server/pollManager');
+const EmailManager = require('./server/emailManager');
 
 const STREAM_KEY = process.env.STREAM_KEY || 'Testing';
 const CHAT_HISTORY_FILE = path.join(__dirname, 'data', 'chat_history.json');
@@ -291,6 +292,45 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Add email subscription endpoints
+app.post('/api/subscribe', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const result = await EmailManager.addSubscriber(email);
+        if (result) {
+            res.status(200).json({ message: 'Successfully subscribed to notifications' });
+        } else {
+            res.status(400).json({ message: 'Email already subscribed' });
+        }
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+app.post('/api/unsubscribe', async (req, res) => {
+    try {
+        const { email, token } = req.body;
+        
+        if (!email || !token) {
+            return res.status(400).json({ message: 'Email and token are required' });
+        }
+
+        // Verify the unsubscribe token
+        if (!EmailManager.verifyUnsubscribeToken(email, token)) {
+            return res.status(403).json({ message: 'Invalid or expired unsubscribe token' });
+        }
+
+        const result = await EmailManager.removeSubscriber(email);
+        if (result) {
+            res.status(200).json({ message: 'Successfully unsubscribed from notifications' });
+        } else {
+            res.status(400).json({ message: 'Email not found in subscribers list' });
+        }
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
 // This should be the LAST route
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -304,6 +344,17 @@ app.use((req, res) => {
 // WebSocket connection handling
 wss.on('connection', (ws) => {
     console.log('New WebSocket client connected');
+    
+    // Add custom properties to track connection state
+    ws.isAlive = true;
+    ws.connectionTime = Date.now();
+    
+    // Handle pings to detect stale connections
+    ws.on('pong', () => {
+        ws.isAlive = true;
+    });
+    
+    // Increment viewer count and broadcast
     viewerCount++;
     
     // Send initial stream status and viewer count
@@ -547,14 +598,35 @@ wss.on('connection', (ws) => {
     // Handle disconnection
     ws.on('close', () => {
         console.log('WebSocket client disconnected');
-        viewerCount = Math.max(0, viewerCount - 1);
-        
-        // Broadcast updated viewer count
-        broadcast({
-            type: 'VIEWER_COUNT',
-            viewers: viewerCount
-        });
+        // Only decrement if the connection was alive
+        if (ws.isAlive) {
+            viewerCount = Math.max(0, viewerCount - 1);
+            // Broadcast updated viewer count
+            broadcast({
+                type: 'VIEWER_COUNT',
+                viewers: viewerCount
+            });
+        }
     });
+});
+
+// Set up ping interval to detect stale connections
+const pingInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (!ws.isAlive) {
+            console.log('Terminating stale connection');
+            viewerCount = Math.max(0, viewerCount - 1);
+            return ws.terminate();
+        }
+        
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 30000);
+
+// Clean up interval on server shutdown
+wss.on('close', () => {
+    clearInterval(pingInterval);
 });
 
 // Helper function to broadcast to all connected clients
@@ -677,6 +749,12 @@ nms.on('prePublish', (id, StreamPath, args) => {
             status: 'LIVE',
             viewers: viewerCount 
         });
+
+        // Send email notifications when stream starts
+        if (EmailManager.isNotificationsEnabled()) {
+            EmailManager.sendStreamNotification()
+                .catch(error => console.error('Error sending stream notifications:', error));
+        }
         return;
     }
 

@@ -2492,3 +2492,146 @@ body {
 .donation-btn.paypal:hover {
     background-color: #005ea6;
 }
+
+/* Email Subscription Form */
+.email-subscription {
+    background: linear-gradient(to bottom, #2d2d2d, #252525);
+    padding: 40px 0;
+    text-align: center;
+    border-top: 1px solid #404040;
+    border-bottom: 1px solid #404040;
+    margin-bottom: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.email-subscription-content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.email-subscription h3 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 1.8rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, #ffffff, #ff9966);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+}
+
+.email-subscription p {
+    color: #ccc;
+    margin-bottom: 25px;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.email-form {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.email-input {
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid #404040;
+    border-radius: 8px;
+    background: rgba(26, 26, 26, 0.8);
+    color: #fff;
+    font-size: 1rem;
+    min-width: 200px;
+    transition: all 0.3s ease;
+}
+
+.email-input:focus {
+    outline: none;
+    border-color: #ff9966;
+    box-shadow: 0 0 10px rgba(255, 153, 102, 0.2);
+    background: rgba(26, 26, 26, 0.95);
+}
+
+.subscribe-btn {
+    padding: 12px 30px;
+    background: linear-gradient(90deg, #ff4d4d, #ff9966);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.9rem;
+}
+
+.subscribe-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 77, 77, 0.3);
+}
+
+.subscribe-btn:active {
+    transform: translateY(0);
+}
+
+.subscribe-btn:disabled {
+    background: linear-gradient(90deg, #666, #888);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.subscription-message {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    padding: 10px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.subscription-message.success {
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.subscription-message.error {
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.1);
+    border: 1px solid rgba(255, 77, 77, 0.2);
+}
+
+@media (max-width: 767px) {
+    .email-subscription {
+        padding: 30px 15px;
+    }
+
+    .email-subscription h3 {
+        font-size: 1.5rem;
+    }
+
+    .email-subscription p {
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+    }
+    
+    .email-form {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .email-input {
+        width: 100%;
+        padding: 10px 15px;
+    }
+    
+    .subscribe-btn {
+        width: 100%;
+        padding: 10px 20px;
+    }
+}

@@ -809,3 +809,28 @@ function setupPeriodicUsernameCheck() {
         }
     }, 5000);
 }
+
+document.addEventListener('websocket-message', function(event) {
+    const data = event.detail;
+    console.log('📨 Received WebSocket message:', data);
+    
+    switch(data.type) {
+        case 'STREAM_STATUS':
+            handleStreamStatusUpdate(data.status);
+            break;
+        case 'VIEWER_COUNT':
+            updateViewerCount(data.viewers);
+            break;
+        case 'CHAT_HISTORY':
+            loadChatHistory(data.messages);
+            break;
+    }
+});
+
+document.addEventListener('websocket-error', function(event) {
+    console.error('❌ WebSocket error:', event.detail);
+});
+
+document.addEventListener('websocket-closed', function() {
+    console.log('🔌 WebSocket connection closed');
+});

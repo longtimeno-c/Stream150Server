@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsubscribe - Stream150</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                        url('/images/stream150-bg.jpg') center/cover fixed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 90%;
+            padding: 40px;
+            background: rgba(18, 18, 24, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(100, 65, 165, 0.3),
+                        0 0 80px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            border: 1px solid rgba(100, 65, 165, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #6441a5, #00ffff, #ff69b4);
+            animation: rainbow 3s linear infinite;
+        }
+
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(100, 65, 165, 0.5);
+        }
+
+        p {
+            color: #ccc;
+            margin-bottom: 25px;
+            font-size: 1.1em;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .success {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+        }
+
+        .error {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #6441a5, #8c54e6);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(100, 65, 165, 0.3);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(100, 65, 165, 0.4);
+            background: linear-gradient(135deg, #7451b5, #9c64f6);
+        }
+
+        .button:active {
+            transform: translateY(1px);
+        }
+
+        #homeLink {
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 85%;
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(100, 65, 165, 0.8),
+                         0 0 20px rgba(100, 65, 165, 0.5),
+                         0 0 30px rgba(100, 65, 165, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="neon-text">Unsubscribe from Stream150</h1>
+        <div id="message"></div>
+        <div id="confirmationBox">
+            <p>Are you sure you want to unsubscribe from Stream150 notifications?</p>
+            <p style="font-size: 0.9em; color: #888;">You'll no longer receive updates when we go live.</p>
+            <button class="button" onclick="confirmUnsubscribe()">Yes, Unsubscribe</button>
+        </div>
+        <p id="homeLink" style="display: none;">
+            <a href="/" class="button">Return to Homepage</a>
+        </p>
+    </div>
+
+    <script>
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+        }
+
+        async function confirmUnsubscribe() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const email = urlParams.get('email');
+            const token = urlParams.get('token');
+
+            if (!email || !token) {
+                showMessage('Invalid unsubscribe link. Please check your email and try again.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/unsubscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, token })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('confirmationBox').style.display = 'none';
+                    showMessage('You have been successfully unsubscribed from Stream150 notifications.', 'success');
+                    document.getElementById('homeLink').style.display = 'block';
+                } else {
+                    showMessage(data.message || 'Failed to unsubscribe. Please try again.', 'error');
+                }
+            } catch (error) {
+                showMessage('An error occurred. Please try again later.', 'error');
+            }
+        }
+
+        // Auto-unsubscribe if confirmation=true is in URL
+        if (new URLSearchParams(window.location.search).get('confirmation') === 'true') {
+            confirmUnsubscribe();
+        }
+    </script>
+</body>
+</html> 
