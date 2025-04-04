@@ -67,6 +67,20 @@ function initializeWebSocket() {
     // Create WebSocket connection
     socket = new WebSocket(wsUrl);
     window.socket = socket; // Make it globally available
+
+    // Clean up function
+    const cleanup = () => {
+        if (socket) {
+            console.log('Cleaning up WebSocket connection...');
+            // Prevent reconnection attempts during intentional closure
+            socket.removeEventListener('close', socket.onclose);
+            socket.close();
+            socket = null;
+        }
+    };
+
+    // Add unload handler
+    window.addEventListener('beforeunload', cleanup);
     
     socket.onopen = () => {
         console.log('WebSocket connection established');
@@ -147,8 +161,8 @@ function initializeWebSocket() {
         });
     };
     
-    socket.onclose = () => {
-        console.log('WebSocket connection closed');
+    socket.onclose = (event) => {
+        console.log('WebSocket connection closed', event.code, event.reason);
         document.dispatchEvent(new CustomEvent('websocket-closed'));
         
         // Update UI to show disconnected state
@@ -157,15 +171,20 @@ function initializeWebSocket() {
             el.classList.remove('connected');
         });
         
-        // Attempt to reconnect
-        if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
-            setTimeout(initializeWebSocket, reconnectDelay);
-        } else {
-            console.error('Maximum reconnection attempts reached');
+        // Only attempt to reconnect if it wasn't a clean closure
+        if (event.code !== 1000 && event.code !== 1001) {
+            // Attempt to reconnect
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                setTimeout(initializeWebSocket, reconnectDelay * Math.pow(2, reconnectAttempts - 1));
+            } else {
+                console.error('Maximum reconnection attempts reached');
+            }
         }
     };
+
+    return cleanup;
 }
 
 function updateViewerCount(count) {
